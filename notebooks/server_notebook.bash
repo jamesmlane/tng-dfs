@@ -1,9 +1,9 @@
 #!/bin/bash
 # Open a notebook, first run on geir/yngve, then on lanermac
 
-# Where do you call Jupyter from?
+# Where do you call Jupyter from on the server?
 # JUPYTER_LOC=jupyter
-JUPYTER_LOC=./.local/bin/jupyter
+REMOTE_JUPYTER_LOC=~/.local/bin/jupyter
 
 # Set the ports
 read -p 'Remote port [8897] ' REMOTE_PORT 
@@ -23,7 +23,7 @@ if [ $HOSTNAME == geir ] || [ $HOSTNAME == geir.astro.utoronto.ca ] || [ $HOSTNA
   read -p 'launch directory [../] ' RUN_DIR
   RUN_DIR=${RUN_DIR:-../} # Default is root project directory
   echo 'Opening a jupyter '$JUPYTER_TYPE' session in '$RUN_DIR
-  $JUPYTER_LOC $JUPYTER_TYPE --no-browser --port=$REMOTE_PORT $RUN_DIR
+  $REMOTE_JUPYTER_LOC $JUPYTER_TYPE --no-browser --port=$REMOTE_PORT $RUN_DIR
 fi
 
 # Open the SSH tunnel
