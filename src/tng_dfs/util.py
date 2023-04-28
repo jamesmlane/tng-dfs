@@ -8,16 +8,23 @@
 # ----------------------------------------------------------------------------
 
 ### Docstrings and metadata:
-'''Utilities and other misc functions. Includes config file loading and parsing.
+'''Utilities and other misc functions. Includes config file loading and parsing,
+TNG API requests, unit conversions
 '''
 __author__ = "James Lane"
 
 ### Imports
 import numpy as np
+import os
+import requests
+import time
+import pdb
 
 # ----------------------------------------------------------------------------
 
-def load_config_to_dict(fname='./config.txt'):
+# Config file loading and parsing
+
+def load_config_to_dict(fname='config.txt'):
     '''load_config_to_dict:
     
     Load a config file and convert to dictionary. Config file takes the form:
@@ -29,22 +36,45 @@ def load_config_to_dict(fname='./config.txt'):
     = sign must separate keywords from values. Trailing # indicates comment
     
     Args:
-        fname (str) - Filename ['./config.txt']
+        fname (str) - Name of the config file ['config.txt']
         
     Returns:
         cdict (dict) - Dictionary of config keyword-value pairs
     '''
     cdict = {}
+    fname_path = _find_config_file(fname)
     with open(fname,'r') as f:
         lines = f.readlines()
         for line in lines:
             if line.split('#')[0].strip() == '': continue # Empty line
             assert '=' in line, 'Keyword-Value pairs must be separated by "="'
-            line_vals = line.split('#')[0].strip().split('=') # Remove comments and split at =
+            # Remove comments and split at =
+            line_vals = line.split('#')[0].strip().split('=') 
             cdict[line_vals[0].strip().upper()] = line_vals[1].strip()
-        ##ln
-    ##wi
     return cdict
+
+def _find_config_file(fname):
+    '''_find_config_file:
+    
+    Recursively find a config file by searching upwards through the directory
+    structure
+    
+    Args:
+        fname (str) - Name of the configuration file to search for
+    
+    Returns:
+        config_path (str) - Path to the configuration file
+    '''
+    config_dir = ''
+    while True:
+        if os.path.realpath(config_dir).split('/')[-1] == 'ges-mass':
+            raise FileNotFoundError('Could not find configuration file within'+
+                                    ' project directory structure')
+        if os.path.realpath(config_dir) == '/':
+            raise RuntimeError('Reached base directory')
+        if os.path.exists(config_dir+fname):
+            return config_dir+fname
+        config_dir = config_dir+'../'
 
 def parse_config_dict(cdict,keyword):
     '''parse_config_dict:
@@ -54,6 +84,8 @@ def parse_config_dict(cdict,keyword):
         VO (float) - galpy velocity scale
         ZO (float) - galpy vertical solar position
         HOME_DIR (string) - base directory for project
+        DATA_DIR (string) - Directory for large data
+        LITTLE_H (float) - Hubble constant in units of 100 km/s/Mpc
     
     Args:
         cdict (dict) - Dictionary of keyword-value pairs
@@ -62,7 +94,7 @@ def parse_config_dict(cdict,keyword):
     Returns:
         value (variable) - Value or result of the keyword
     '''
-    if isinstance(keyword,(list,tuple,np.ndarray)): # Iterable but not string, many keywords
+    if isinstance(keyword,(list,tuple,np.ndarray)): # many keywords
         _islist = True
         _keyword = []
         _value = []
@@ -76,29 +108,23 @@ def parse_config_dict(cdict,keyword):
     
     for key in _keyword:
         # Floats
-        if key in ['RO','VO','ZO']:
+        if key in ['RO','VO','ZO','LITTLE_H']:
             if _islist:
                 _value.append( float(cdict[key]) )
             else:
-                return float(cdict[key]) 
-            ##ie
-        ##fi       
+                return float(cdict[key])   
         # Ints
         elif key in []:
             if _islist:
                 _value.append( int(cdict[key]) )
             else:
                 return int(cdict[key])
-            ##ie
-        ##ei
         # Strings 
-        elif key in ['HOME_DIR',]:
+        elif key in ['HOME_DIR','DATA_DIR']:
             if _islist:
                 _value.append( cdict[key] )
             else:
                 return cdict[key]
-            ##ie
-        ##ei
         # No code, just pass value
         else:
             print('Warning: keyword '+key+' has no parsing code,'+
