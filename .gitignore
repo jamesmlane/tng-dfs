@@ -12,12 +12,16 @@
 # Notebook data and plots
 notebooks/**/data/
 notebooks/**/plots/
+*.png
 
 # Notebooks. Normal protocol is to wipe notebooks before commits
 # noteboooks/**/*.ipynb
 
 # Presentations
 #presentations/
+
+# Configuration files
+*config.txt
 
 # Scratch space
 scratch/
