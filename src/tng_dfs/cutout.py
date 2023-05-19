@@ -15,6 +15,7 @@ __author__ = "James Lane"
 ### Imports
 import numpy as np
 import h5py
+import scipy.interpolate
 from galpy import orbit
 from galpy.util import _rotate_to_arbitrary_vector
 _ASTROPY = True
@@ -73,6 +74,7 @@ class TNGCutout():
         self._vcen_mask = None
         self._rot_ptype = None
         self._rot_mask = None
+        self._E_Jcirc_spline = None
             
     def center_and_rectify(self,cen_ptype='PartType4', vcen_ptype='PartType4', 
         rot_ptype='PartType0', cen_scheme='ssc', vcen_scheme='bounded_vcom',
@@ -580,3 +582,115 @@ class TNGCutout():
             vR (np.array) - shape (N,3) rotated vector
         '''
         return np.dot(R,v.T).T
+    
+    def get_E_Jcirc_spline(self,ptype,angmom='J',scheme='empirical'):
+        '''get_E_Jcirc_spline:
+
+        Get a spline that expresses Jcirc as a function of energy based on a 
+        supplied scheme. Can be 'empirical'
+
+        Args:
+            ptype (str) - Particle type
+            angmom (str) - Angular momentum to use, total angular momentum 'J' 
+                or angular momentum about rotation axis 'Jz' [default 'J']
+            scheme (str) - Scheme to use [default 'empirical']
+
+        Returns:
+            None
+
+        Raises:
+            RuntimeError - If subhalo has not been centered and rotated
+        
+        Sets:
+            self._E_Jcirc_spline (scipy.interpolate.interp1d) - Spline that
+                expresses Jcirc as a function of energy
+        '''
+        # Assume centered and rotated
+        if not (self._cen_is_set and self._vcen_is_set and self._rot_is_set):
+            raise RuntimeError('Subhalo has not been centered and rotated')
+        
+        # Force use of code units so that output is in code units
+        vels = self.get_velocities(ptype, physical=False, internal=True)
+        L = self.get_angular_momentum(ptype, physical=False, internal=True)
+        pot = self.get_potential_energy(ptype, physical=False, internal=True)
+        
+        # Make energy
+        kin = 0.5*np.sum(np.square(vels),axis=1)
+        E = kin + pot
+        if angmom == 'J':
+            J = np.sqrt(np.sum(np.square(L),axis=1))
+        elif angmom == 'Jz':
+            J = L[:,2]
+
+        # Now make spline based on supplied scheme
+        if scheme == 'empirical':
+            self._E_Jcirc_spline = self._get_E_Jcirc_spline_empirical(E,J)
+
+        return None
+    
+    def _get_E_Jcirc_spline_empirical(self,E,J,ngrid=100,spline_fn=None,
+            spline_kwargs={'kind':'linear','bounds_error':False,
+            'fill_value':'extrapolate'}):
+        '''_get_E_Jcirc_spline_empirical:
+
+        Get a spline that expresses Jcirc as a function of energy using 
+        an empirical method.
+
+        Args:
+            
+        Returns:
+            E_Jcirc_spline (scipy.interpolate.interp1d) - Spline that
+                expresses Jcirc as a function of energy
+        '''
+        # First bin up E and J to get max J at each E
+        E_edges = np.linspace(E.min(),E.max(),num=ngrid+1)
+        E_cents = 0.5*(E_edges[1:] + E_edges[:-1])
+        J_max = np.zeros(ngrid)
+        mask = np.ones(ngrid,dtype=bool)
+        for i in range(ngrid):
+            E_mask = (E > E_edges[i]) & (E <= E_edges[i+1])
+            if np.sum(E_mask) == 0:
+                mask[i] = False
+                continue
+            J_max[i] = np.max(np.abs(J[E_mask])) # Use absolute value incase Jz
+        
+        # Now make spline
+        if spline_fn is None:
+            E_Jcirc_spline = scipy.interpolate.interp1d(E_cents[mask],J_max[mask],
+                                      **spline_kwargs)
+        else:
+            E_Jcirc_spline = spline_fn(E_cents[mask],J_max[mask],
+                                       **spline_kwargs)
+        return E_Jcirc_spline
+
+    def Jcirc(self,E,physical=True,internal=False):
+        '''Jcirc:
+        
+        Calculate the angular momentum of a circular orbit as a function of 
+        energy. 
+        
+        Args:
+            E (float) - Energy of orbit (in code units)
+            physical (bool) - Output in physical units, rather than code units
+            internal (bool) - For internal use in the code, ignore astropy
+
+        Returns:
+            Jcirc (float) - Angular momentum of circular orbit
+        '''
+        if self._E_Jcirc_spline is None:
+            raise RuntimeError('E_Jcirc_spline has not been set')
+        
+        # Check for astropy units
+        if isinstance(E,apu.Quantity):
+            E = util.energy_physical_to_code(
+                E.to(apu.km*apu.km/apu.s/apu.s).value,z=self.z)
+        else:
+            print('No astropy units detected, assuming code units')
+
+        Jcirc = self._E_Jcirc_spline(E)
+        if physical:
+            Jcirc = util.angular_momentum_code_to_physical(Jcirc,h=self.h,
+                                                           z=self.z)
+        if _ASTROPY and physical and not internal:
+            Jcirc *= (apu.kpc*apu.km/apu.s)
+        return Jcirc
