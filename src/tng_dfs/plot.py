@@ -404,3 +404,127 @@ def plot_merger_information(tree,mlpid,threshold_mass_ratio=0.1,
     fig.subplots_adjust(hspace=0.1)
     return fig,axs
 
+def plot_merger_scheme_comparison(data_1,data_2,plot_mlpids=False):
+    '''plot_merger_scheme_comparison:
+    
+    Compare the secondary/primary mass ratios of the mergers identified using 
+    two different schemes, and possible two different sets of particles.
+    
+    Args:
+
+    Returns:
+        fig (matplotlib.figure.Figure): Figure object
+        axs (list of matplotlib.axes._subplots.AxesSubplot): List of axes 
+            objects    
+    '''
+    # Unpack data
+    pz0id_1_raw, smlpid_1_raw, mratio_1_raw, mratio_snap_1_raw = data_1
+    pz0id_2_raw, smlpid_2_raw, mratio_2_raw, mratio_snap_2_raw = data_2
+
+    # Prepare figure and axes
+    fig = plt.figure(figsize=(10,10))
+    gs = mpl.gridspec.GridSpec(5,5)
+    ax1 = fig.add_subplot(gs[2:,0:3])
+    ax2 = fig.add_subplot(gs[1,0:3])
+    ax3 = fig.add_subplot(gs[0,0:3])
+    ax4 = fig.add_subplot(gs[2:,-2])
+    ax5 = fig.add_subplot(gs[2:,-1])
+
+    # Collate the results from the different trees
+    smlpid_1 = np.concatenate(smlpid_1_raw)
+    smlpid_2 = np.concatenate(smlpid_2_raw)
+    smlpid_unique = np.unique(np.concatenate((smlpid_1,smlpid_2)))
+    pz0id_1 = np.zeros(len(smlpid_1))
+    pz0id_2 = np.zeros(len(smlpid_2))
+    mratio_1 = np.concatenate(mratio_1_raw)
+    mratio_2 = np.concatenate(mratio_2_raw)
+    mratio_snap_1 = np.concatenate(mratio_snap_1_raw)
+    mratio_snap_2 = np.concatenate(mratio_snap_2_raw)
+
+    assert len(pz0id_1_raw) == len(pz0id_2_raw)
+    for i in range(len(pz0id_1_raw)):
+        pz0id_1[smlpid_1==smlpid_1_raw[i]] = pz0id_1_raw[i]
+        pz0id_2[smlpid_2==smlpid_2_raw[i]] = pz0id_2_raw[i]
+
+    # Get masks showing where major mergers are in common, and where they are unique
+    # to one method
+    common_mask_1 = np.in1d(smlpid_1,smlpid_2)
+    common_mask_2 = np.in1d(smlpid_2,smlpid_1)
+    # unique_mask_1 = np.in1d(smlpid_1,
+    #     smlpid_unique[~np.in1d(smlpid_unique,smlpid_1)])
+    # unique_mask_2 = np.in1d(smlpid_2,
+    #     smlpid_unique[~np.in1d(smlpid_unique,smlpid_2)])
+
+    # Plot the results
+    ax1.scatter(mratio_1[common_mask_1],mratio_2[common_mask_2], s=24, 
+        marker='o', edgecolors='Black', facecolors='Red')
+    ax1.plot([-10,10],[-10,10], color='Black', linestyle='dashed')
+
+    # Plot scatter of mass ratio vs snapshot of accretion in each method
+    ax2.scatter(mratio_1[common_mask_1],mratio_snap_1[common_mask_1], s=24,
+        marker='o', edgecolors='Black', facecolors='Red', zorder=3)
+    ax2.scatter(mratio_1[~common_mask_1],mratio_snap_1[~common_mask_1], s=24,
+        marker='s', edgecolors='Black', facecolors='LightGrey', zorder=2)
+
+    ax4.scatter(mratio_snap_2[common_mask_2], mratio_2[common_mask_2], s=24,
+        marker='o', edgecolors='Black', facecolors='Red', zorder=3)
+    ax4.scatter(mratio_snap_2[~common_mask_2], mratio_2[~common_mask_2], s=24,
+        marker='s', edgecolors='Black', facecolors='LightGrey', zorder=2)
+
+    if plot_mlpids:
+        for i in range(len(smlpid_1)):
+            ax2.text(mratio_1[i],mratio_snap_1[i],str(smlpid_1[i])[-5:],
+                fontsize=3,color='Grey')
+        for i in range(len(smlpid_2)):
+            ax4.text(mratio_snap_2[i],mratio_2[i],str(smlpid_2[i])[-5:],
+                fontsize=3,color='Grey')
+
+    # Plot the marginalized histograms for each method
+    nbins = 11
+    hrange = [0,1]
+    common_color = 'LightGrey'
+    uncommon_color = 'Red'
+    ax3.hist(mratio_1, bins=nbins, range=hrange, histtype='step', 
+        color=common_color, linewidth=4, linestyle='solid', zorder=2)
+    ax3.hist(mratio_1[common_mask_1], bins=nbins, range=hrange, histtype='step',
+        color=uncommon_color, linewidth=2, linestyle='dashed', zorder=3)
+
+    ax5.hist(mratio_2, bins=nbins, range=hrange, histtype='step', 
+        color=common_color, linewidth=4, linestyle='solid', zorder=2, 
+        orientation='horizontal')
+    ax5.hist(mratio_2[common_mask_2], bins=nbins, range=hrange, histtype='step',
+        color=uncommon_color, linewidth=2, linestyle='dashed', zorder=3,
+        orientation='horizontal')
+
+    # Set limits and labels
+    xlim = [-0.1,1.1]
+    ylim = [-0.1,1.1]
+    slim = [0,100]
+    ax1.set_xlim(xlim)
+    ax1.set_ylim(ylim)
+    ax1.set_xlabel(r'$M_{\rm ratio}$ (dark matter)')
+    ax1.set_ylabel(r'$M_{\rm ratio}$ (stars)')
+
+    # snap vs mratio for #1
+    ax2.set_xlim(xlim)
+    ax2.set_ylim(slim)
+    ax2.set_ylabel(r'Snap $N_{\rm mratio}$')
+    ax2.tick_params(labelbottom=False)
+
+    # Marginalized histogram for #1
+    ax3.set_xlim(xlim)
+    ax3.set_ylabel(r'$N$')
+    ax3.tick_params(labelbottom=False)
+
+    # snap vs mratio for #2
+    ax4.set_ylim(ylim)
+    ax4.set_xlim(slim)
+    ax4.set_xlabel(r'Snap $N_{\rm mratio}$')
+    ax4.tick_params(labelleft=False)
+
+    # Marginalized histogram for #2
+    ax5.set_ylim(ylim)
+    ax5.set_xlabel(r'$N$')
+    ax5.tick_params(labelleft=False)
+
+    return fig,[ax1,ax2,ax3,ax4,ax5]
