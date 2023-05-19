@@ -345,7 +345,7 @@ class TNGCutout():
         '''
         # Assume centered and rotated
         if not (self._cen_is_set and self._vcen_is_set and self._rot_is_set):
-            print('Warning, subhalo has not been fully centered and rotated')
+            raise RuntimeError('Subhalo has not been centered and rotated')
         
         # Make quantities for orbits
         coords = self.get_coordinates(ptype,physical=True,internal=True)
