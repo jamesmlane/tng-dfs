@@ -407,3 +407,33 @@ def subhalo_list_to_recarray(subs):
     ###i
     return subs_rec
 #def
+
+# ----------------------------------------------------------------------------
+
+# Misc. functions
+
+def find_contiguous(mask):
+    '''find_contiguous: Find contiguous regions in a mask which are True with 
+    no false in between'''
+    assert len(mask.shape)==1, 'Mask must be 1D'
+    contigs = []
+    found_contig = False 
+    for i,b in enumerate(mask):
+        if b and not found_contig: # found the beginning, record index as start, set indicator
+            contig = [i]
+            found_contig = True 
+        elif b and found_contig: # currently have contig, continuing it 
+            pass
+        elif not b and found_contig: # found the end, record previous index as end, reset indicator  
+            contig.append(i-1)
+            found_contig = False 
+            contigs.append(tuple(contig))
+        else: # currently don't have a contig, and didn't find one 
+            pass 
+
+    if b: # Check if the very last entry was True and we didn't get to finish 
+        contig.append(i)
+        found_contig = False 
+        contigs.append(tuple(contig))
+        
+    return contigs
