@@ -270,6 +270,45 @@ class TNGCutout():
             pot *= (apu.km/apu.s)**2
         return pot
     
+    def get_angular_momentum(self,ptype,physical=True,internal=False):
+        '''get_angular_momentum:
+
+        Wrapper for particle angular momentum access, handles conversion to
+        physical units (kpc km/s) and astropy units if necessary
+
+        Args:
+            ptype (str) - Particle type
+            physical (bool) - Output in physical units, rather than code units
+            internal (bool) - For internal use in the code, ignore astropy
+        
+        Returns:
+            L (np.array) - angular momentum in physical units (kpc km/s),
+                maybe astropy
+        '''
+        coords = self.get_coordinates(ptype,physical=physical,internal=internal)
+        vels = self.get_velocities(ptype,physical=physical,internal=internal)
+        return np.cross(coords,vels)
+
+    def get_J_Jz_Jp(self,ptype,physical=True,internal=False):
+        '''get_J_Jz_Jp:
+        
+        Get the angular momentum magnitude, z-component, and perpendicular
+        
+        Args:
+            ptype (str) - Particle type
+            physical (bool) - Output in physical units, rather than code units
+            internal (bool) - For internal use in the code, ignore astropy
+        
+        Returns:
+            J,Jz,Jp (np.array) - angular momentum magnitude, z-component, and 
+                perpendicular
+        '''
+        L = self.get_angular_momentum(ptype,physical=physical,internal=internal)
+        J = np.linalg.norm(L,axis=1)
+        Jz = L[:,2]
+        Jp = np.sqrt(J**2-Jz**2)
+        return J,Jz,Jp
+
     def get_property(self,ptype,key,numpy_wrap=True):
         '''get_property:
         
