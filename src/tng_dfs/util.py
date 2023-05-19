@@ -20,6 +20,8 @@ import requests
 import time
 import pdb
 
+__snap_zs__ = None
+
 # ----------------------------------------------------------------------------
 
 # Config file loading and parsing
@@ -310,6 +312,28 @@ def energy_physical_to_code(e,z=0.):
     '''
     a = 1./(z+1.)
     return e/a
+
+def snapshot_to_redshift(snap,sim_url='http://www.tng-project.org/api/TNG50-1/'):
+    '''snapshot_to_redshift:
+    Convert a simulation snapshot number to redshift.
+    
+    Args:
+        snap (int or array) - Snapshot number, larger N is smaller redshift
+        sim_url (str) - URL of the simulation API [default: TNG50-1]
+    
+    Returns:
+        z (float) - Redshift
+    '''
+    # First get the redshifts for all snapshots
+    global __snap_zs__
+    if __snap_zs__ is None:
+        sim = get( sim_url )
+        snaps = get( sim['snapshots'] )
+        __snap_zs__ = [snap['redshift'] for snap in snaps]
+    if isinstance(snap,(list,tuple,np.ndarray)):
+        return np.array([__snap_zs__[s] for s in snap])
+    else: # Assume can become an int
+        return __snap_zs__[int(snap)]
 
 # ----------------------------------------------------------------------------
 
