@@ -584,4 +584,37 @@ def get_mapping_sb_to_mb(mb_snap,sb_snap):
     # Undo the sorting in the resulting index list
     sb_mb_map = np.take(mb_snap_indx, mb_snap_sorted_indx, mode='clip')
     return sb_mb_map
-#def
+
+def get_mask_from_particle_ids(primary_id,secondary_id):
+    '''get_mask_from_particle_ids
+
+    Get a mask for a set of particle IDs based on a second set of particle IDs.
+
+    Args:
+        primary_id (np.array) - Array of particle IDs representing the primary 
+            galaxy, which will be masked such that only particles from the 
+            secondary galaxy are included
+        secondary_particle_ids (np.array) - Array of particle IDs representing
+            the secondary galaxy. This is the merger remnant.
+
+    Returns:
+        mask (np.array) - Mask for primary_id such that only particles from the
+            secondary galaxy are included
+    '''
+    # First sort the primary particle IDs so they can be searched efficiently
+    primary_id_indx = np.argsort(primary_id)
+    primary_id_sorted = primary_id[primary_id_indx]
+    primary_id_sorted_indx = np.searchsorted(primary_id_sorted,secondary_id)
+    # Undo the sorting in the resulting index list
+    mask = np.take(primary_id_indx, primary_id_sorted_indx, mode='clip')
+    return mask
+
+def plot_mass_primary_secondary_branch(tree):
+    '''plot_mass_primary_secondary_branch:
+
+    Plot the masses of a secondary branch and compare with the primary branch
+
+    Args:
+        tree (dict) - Tree dictionary
+    '''
+    
