@@ -313,6 +313,41 @@ def energy_physical_to_code(e,z=0.):
     a = 1./(z+1.)
     return e/a
 
+def angular_momentum_code_to_physical(j,h=0.7,z=0):
+    '''angular_momentum_code_to_physical:
+    Convert a comoving angular momentum in Illustris-TNG code units to physical,
+    non-comoving units.
+
+    Args:
+        j (float or np.array) - angular momentum in comoving TNG code units
+        h (float) - Hubble parameter
+        z (float) - Redshift
+
+    Returns:
+        j_phys (float or np.array) - angular momentum in non-comoving, physical
+            units
+    '''
+    a = 1./(z+1.)
+    return j*a**1.5/h
+
+def angular_momentum_physical_to_code(j,h=0.7,z=0):
+    '''angular_momentum_physical_to_code:
+    Convert a physical, non-comoving angular momentum in units to comoving 
+    Illustris-TNG code units.
+
+    Args:
+        j (float or np.array) - angular momentum in non-comoving, physical 
+            units
+        h (float) - Hubble parameter
+        z (float) - Redshift
+
+    Returns:
+        j_code (float or np.array) - angular momentum in comoving TNG code 
+            units
+    '''
+    a = 1./(z+1.)
+    return j*h/a**1.5
+
 def snapshot_to_redshift(snap,sim_url='http://www.tng-project.org/api/TNG50-1/'):
     '''snapshot_to_redshift:
     Convert a simulation snapshot number to redshift.
