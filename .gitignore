@@ -13,6 +13,7 @@
 notebooks/**/data/
 notebooks/**/plots/
 *.png
+*.pdf
 
 # Notebooks. Normal protocol is to wipe notebooks before commits
 # noteboooks/**/*.ipynb
@@ -28,6 +29,9 @@ scratch/
 
 # Movies
 *.mp4
+
+# vscode stuff
+*.vscode/
 
 ################################################################################
 
