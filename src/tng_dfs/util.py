@@ -45,7 +45,7 @@ def load_config_to_dict(fname='config.txt'):
     '''
     cdict = {}
     fname_path = _find_config_file(fname)
-    with open(fname,'r') as f:
+    with open(fname_path,'r') as f:
         lines = f.readlines()
         for line in lines:
             if line.split('#')[0].strip() == '': continue # Empty line
@@ -69,13 +69,13 @@ def _find_config_file(fname):
     '''
     config_dir = ''
     while True:
-        if os.path.realpath(config_dir).split('/')[-1] == 'ges-mass':
+        if os.path.exists(config_dir+fname):
+            return config_dir+fname
+        if os.path.realpath(config_dir).split('/')[-1] == 'tng-dfs':
             raise FileNotFoundError('Could not find configuration file within'+
                                     ' project directory structure')
         if os.path.realpath(config_dir) == '/':
             raise RuntimeError('Reached base directory')
-        if os.path.exists(config_dir+fname):
-            return config_dir+fname
         config_dir = config_dir+'../'
 
 def parse_config_dict(cdict,keyword):
