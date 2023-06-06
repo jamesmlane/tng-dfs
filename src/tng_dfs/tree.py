@@ -46,11 +46,16 @@ class SublinkTree():
                                              f['MainLeafProgenitorID'][0]+1)
             self.main_branch_mask = np.isin(f['SubhaloID'],self.main_branch_ids)
             self.main_branch_mass = f['Mass'][self.main_branch_mask]
+            self.main_branch_star_mass = (f['SubhaloMassType'][:,4]
+                [self.main_branch_mask])
             self.main_branch_snap = f['SnapNum'][self.main_branch_mask]
 
         # Will be initialized later if needed
         self.main_branch_mass_grow_mask = None
         self.secondary_main_map = None
+        self.find_mapping_secondary_to_main_branch()
+        self.all_main_map = None
+        self.find_mapping_all_to_main_branch()
 
     ## Methods
 
@@ -187,6 +192,33 @@ class SublinkTree():
         secondary_main_map = _find_mapping_secondary_to_main_branch(
                 self.main_branch_snap,secondary_branch_snap,**kwargs)
         self.secondary_main_map = secondary_main_map
+
+    def find_mapping_all_to_main_branch(self):
+        '''find_mapping_all_to_main_branch:
+        
+        Find a mapping from all subhalos (not just secondaries) to the main 
+        branch. Very similar to secondary_main_map, but also includes the 
+        main branch. So if the main branch is the first N elements of the 
+        tree, for example, (which it should always be?) then the all_main_map
+        is just:
+        
+        np.concatenate([np.arange(N),secondary_main_map]))
+        
+        But it will be checked to ensure that the mapping is correct
+
+        Args:
+            None
+        
+        Returns:
+            all_main_map (np.array) - Array of indices from all subhalos to 
+                main branch subhalos, length is len(self)
+        '''
+        if self.secondary_main_map is None:
+            raise RuntimeError('''Must run 
+                find_mapping_secondary_to_main_branch() first''')
+        all_main_map =  np.concatenate([np.where(self.main_branch_mask)[0],
+            self.secondary_main_map])
+        self.all_main_map = all_main_map
 
     def find_major_mergers(self,scheme,scheme_kwargs={},
         check_descends_to_main=True):
