@@ -27,6 +27,9 @@ from tng_dfs import util
 
 import pdb
 
+_full_snapshot_numbers = [2,3,4,6,8,11,13,17,21,25,33,40,50,59,67,72,78,84,91,99]
+# _mini_snapshot_fields = {'':}
+
 # ----------------------------------------------------------------------------
 
 # Class to handle methods associated with TNG cutouts
@@ -43,7 +46,7 @@ class TNGCutout():
         Initialize a TNGCutout class instance. Hopefully no memory leaks 
         
         Args:
-            f (str) - Filename of file containing simulation data.
+            filename (str) - Filename of file containing simulation data.
             h (float) - Hubble parameter [default 0.7]
             z (float) - redshift of snapshot [default 0.]
         '''
@@ -63,7 +66,14 @@ class TNGCutout():
             self.z = self.header['Redshift']
         self._mass = self.header['MassTable']
         self._npart = self.header['NumPart_ThisFile']
+        self._snapnum = self.header['SnapNum']
+        self._is_full_snapshot = self._snapnum in _full_snapshot_numbers
         
+        self._ptype_fields = {}
+        for cr in self.header['CutoutRequest'].split('+'):
+            c = cr.split('=')
+            self._ptype_fields[c[0]] = c[1].split(',')
+
         # Centering and rectification flags and info
         self._cen_is_set = False
         self._vcen_is_set = False
@@ -258,6 +268,8 @@ class TNGCutout():
             pot (np.array) - potential energy in physical units (km/s)^2, 
                 maybe astropy
         '''
+        if not self._is_full_snapshot:
+            raise ValueError('Potential energy is not available for mini snapshots')
         if key is None:
             key = 'Potential'
         with h5py.File(self.filename,'r') as f:
@@ -325,6 +337,8 @@ class TNGCutout():
         Returns:
             output (unknown) - Output property
         '''
+        if key not in self._ptype_fields[ptype]:
+            raise ValueError('Key: '+key+' not available for particle type: '+ptype)
         with h5py.File(self.filename,'r') as f:
             output = f[ptype][key]
         if numpy_wrap:
