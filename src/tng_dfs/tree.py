@@ -15,6 +15,7 @@ __author__ = "James Lane"
 ### Imports
 import numpy as np
 import h5py
+import scipy.interpolate
 
 # ----------------------------------------------------------------------------
 
@@ -119,6 +120,37 @@ class SublinkTree():
         else:
             self.main_branch_mass_grow_mask = main_branch_mass_grow_mask
 
+    def get_main_branch_mass_growing_interpolator(self,mass_key=None):
+        '''get_main_branch_mass_growing_interpolator:
+        
+        Get an interpolator for the main branch mass that is monotonically
+        increasing. In gaps between the previous maximum and a new maximum, 
+        linearly interpolate the mass.
+
+        Args:
+            mass_key (str) - If not None, use this key get the main branch 
+                mass and accompanying mass. Otherwise use the default mass
+                (dark matter), default None
+
+        Returns:
+            interp (scipy.interpolate.interp1d) - Interpolator for the main 
+                branch mass that is monotonically increasing
+        '''
+        if mass_key is not None:
+            main_branch_mass_growing_mask = \
+                self.find_where_main_branch_mass_growing(mass_key=mass_key,
+                return_mask=False,_check=True)
+            mass = self.get_property(mass_key)[self.main_branch_mask]
+        else:
+            assert self.main_branch_mass_grow_mask is not None
+            main_branch_mass_growing_mask = self.main_branch_mass_grow_mask
+            mass = self.main_branch_mass
+        
+        return scipy.interpolate.interp1d(
+            self.main_branch_snap[main_branch_mass_growing_mask],
+            mass[main_branch_mass_growing_mask],
+            kind = 'linear', bounds_error=False, fill_value='extrapolate')
+        
     def find_mapping_secondary_to_main_branch(self,**kwargs):
         '''find_mapping_secondary_to_main_branch:
 
