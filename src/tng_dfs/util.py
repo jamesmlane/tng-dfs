@@ -18,6 +18,8 @@ import numpy as np
 import os
 import requests
 import time
+import copy
+import dill as pickle
 import pdb
 
 __snap_zs__ = None
@@ -138,6 +140,91 @@ def parse_config_dict(cdict,keyword):
     # Assume single key has returned already
     return _value
 #def
+
+# ----------------------------------------------------------------------------
+
+# Standard notebook preparation
+
+def prepare_mwsubs(data_dir,h=0.7,mw_mass_range=[5,7],return_vars=False,
+    force_mwsubs=False):
+    '''prepare_mwsubs:
+
+    Do some standard prep: fetch simulation info with TNG API, load the 
+    mwsubs file
+
+    Args:
+        data_dir (str) - Directory for large data from config
+        h (float) - Hubble constant in units of 100 km/s/Mpc from config,
+            default 0.7
+        mw_mass_range (arr) - Range of Milky Way stellar masses in 10**10 Msun
+            from config, default [5,7]
+        return_vars (bool) - Return all variables as a dict instead of just 
+            mwsubs.
+    
+    Returns:
+        mwsubs (numpy recarray) - recarray  of MW analog subhalo information
+        vars (dict) - Dictionary of most variables used in this function
+    '''
+    # Base URL
+    baseURL = 'http://www.tng-project.org/api/'
+    # Get list of simulations
+    r = get(baseURL)
+    sim_names = [sim['name'] for sim in r['simulations']]
+    tng50_indices = [sim_names.index('TNG50-'+str(i+1)) for i in range(4)]
+    # Choose the lowest resolution tng50 run
+    tng50_urls = [r['simulations'][i]['url'] for i in tng50_indices]
+    tng50_url = tng50_urls[0]
+
+    # Get the simulation, snapshots, snapshot redshifts
+    sim = get( tng50_url )
+    snaps = get( sim['snapshots'] )
+    snap_zs = [snap['redshift'] for snap in snaps]
+    snap0 = get( snaps[-1]['url'] )
+
+    # Query the API for subhalos with stellar mass in a range near that of the 
+    # Milky Way
+    mw_mass_range = np.array([5,7])*1e10
+    mw_mass_range_code = mass_physical_to_code(mw_mass_range,h=h,e10=True)
+    mw_search_query = '?mass_stars__gt='+str(mw_mass_range_code[0])+\
+                        '&mass_stars__lt='+str(mw_mass_range_code[1])+\
+                        '&primary_flag__gt=0'
+    mw_search_results = get( snap0['subhalos']+mw_search_query )['results']
+    print(str(len(mw_search_results))+' Milky way like galaxies found')
+    n_mw = len(mw_search_results)
+
+    # Get subhalo data
+    mwsubs_path = data_dir+'subs/mwsubs.pkl'
+    if force_mwsubs or os.path.exists(mwsubs_path) == False:
+        print('Downloading subhalo data')
+        mwsubs = []
+        for i in range(len(mw_search_results)):
+            mwsubs.append( get( mw_search_results[i]['url'], timeout=None ) )
+        # Save subhalo data
+        print('Saving subhalo data to '+mwsubs_path)
+        with open(mwsubs_path,'wb') as f:
+            pickle.dump(mwsubs,f)
+    else:
+        print('Loading subhalo data from '+mwsubs_path)
+        with open(mwsubs_path,'rb') as f:
+            mwsubs = pickle.load(f)
+        print('File has '+str(len(mwsubs))+' subhalos')
+
+    # Convert to numpy recarray 
+    mwsubs_dict = copy.deepcopy(mwsubs)
+    mwsubs = subhalo_list_to_recarray(mwsubs)
+
+    if return_vars:
+        vars = {'baseURL':baseURL,'sim_names':sim_names,
+                'tng50_indices':tng50_indices,'tng50_urls':tng50_urls,
+                'tng50_url':tng50_url,'sim':sim,'snaps':snaps,'snap_zs':snap_zs,
+                'snap0':snap0,'mw_mass_range':mw_mass_range,
+                'mw_mass_range_code':mw_mass_range_code,
+                'mw_search_query':mw_search_query,
+                'mw_search_results':mw_search_results,'n_mw':n_mw,
+                'mwsubs':mwsubs,'mwsubs_dict':mwsubs_dict}
+        return mwsubs,vars
+    else:
+        return mwsubs
 
 # ----------------------------------------------------------------------------
 
