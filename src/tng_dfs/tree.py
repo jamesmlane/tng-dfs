@@ -285,68 +285,68 @@ class SublinkTree():
         return major_merger_mlpid,major_merger_mass_ratio,\
             major_merger_mass_ratio_snap
 
-    def _find_major_mergers_mratio_at_z_ensure_mgrow(self, 
-        mass_mratio_key='Mass', mass_ratio_threshold=0.1,snapnum_threshold=20):
-        '''_find_major_mergers_mratio_at_z_ensure_mgrow:
+    # def _find_major_mergers_mratio_at_z_ensure_mgrow(self, 
+    #     mass_mratio_key='Mass', mass_ratio_threshold=0.1,snapnum_threshold=20):
+    #     '''_find_major_mergers_mratio_at_z_ensure_mgrow:
 
-        Routine to identify major mergers from the tree using the mass ratio of 
-        the primary and secondary at any redshift (snapshot) while ensure the 
-        mass is growing at that time.
+    #     Routine to identify major mergers from the tree using the mass ratio of 
+    #     the primary and secondary at any redshift (snapshot) while ensure the 
+    #     mass is growing at that time.
 
-        Used by find_major_mergers() with scheme='mratio_at_z_ensure_mgrow'
+    #     Used by find_major_mergers() with scheme='mratio_at_z_ensure_mgrow'
 
-        Args:
-            mass_mratio_key (str or dict) - Key for the tree dictionary to 
-                get the mass used to calculate the mass ratio. For str/dict 
-                definitions see get_property(). Default is 'Mass'
-            mass_ratio_threshold (float) - Threshold for mass ratio of secondary
-                to main branch subhalos, default 0.1
-            snapnum_threshold (int) - Threshold for the snapshot number of the
-                secondary branch subhalo, default 20
+    #     Args:
+    #         mass_mratio_key (str or dict) - Key for the tree dictionary to 
+    #             get the mass used to calculate the mass ratio. For str/dict 
+    #             definitions see get_property(). Default is 'Mass'
+    #         mass_ratio_threshold (float) - Threshold for mass ratio of secondary
+    #             to main branch subhalos, default 0.1
+    #         snapnum_threshold (int) - Threshold for the snapshot number of the
+    #             secondary branch subhalo, default 20
         
-        Returns:
-            major_merger_mlpid (np.array) - MainLeafProgenitorID of the 
-                secondary branch that merges into the main branch, constituting 
-                a major merger.
-            major_merger_mass_ratio (np.array) - Mass ratio of the secondary 
-                branch to the main branch at the time of the merger.
-        '''
-        mass = self.get_property(mass_mratio_key)
-        snapnum = self.get_property('SnapNum')
-        main_leaf_progenitor_id = self.get_property('MainLeafProgenitorID')
-        main_branch_mask = self.main_branch_mask
-        secondary_main_map = self.secondary_main_map
-        assert secondary_main_map is not None, \
-            'secondary_main_map is None, call find_mapping_secondary_to_main_branch()'
-        main_branch_mass_grow_mask = self.main_branch_mass_grow_mask
-        assert main_branch_mass_grow_mask is not None, \
-            'main_branch_mass_grow_mask is None, call find_main_branch_mass_grow_mask()'
+    #     Returns:
+    #         major_merger_mlpid (np.array) - MainLeafProgenitorID of the 
+    #             secondary branch that merges into the main branch, constituting 
+    #             a major merger.
+    #         major_merger_mass_ratio (np.array) - Mass ratio of the secondary 
+    #             branch to the main branch at the time of the merger.
+    #     '''
+    #     mass = self.get_property(mass_mratio_key)
+    #     snapnum = self.get_property('SnapNum')
+    #     main_leaf_progenitor_id = self.get_property('MainLeafProgenitorID')
+    #     main_branch_mask = self.main_branch_mask
+    #     secondary_main_map = self.secondary_main_map
+    #     assert secondary_main_map is not None, \
+    #         'secondary_main_map is None, call find_mapping_secondary_to_main_branch()'
+    #     main_branch_mass_grow_mask = self.main_branch_mass_grow_mask
+    #     assert main_branch_mass_grow_mask is not None, \
+    #         'main_branch_mass_grow_mask is None, call find_main_branch_mass_grow_mask()'
 
-        # Make a mask based on mass ratio, snapshot number, and add in 
-        # forced mass growth
-        mass_ratio = mass[~main_branch_mask] /\
-                     mass[main_branch_mask][secondary_main_map]
-        major_mask = (mass_ratio > mass_ratio_threshold) &\
-                     (mass_ratio < 1.0) &\
-                     (snapnum[~main_branch_mask] > snapnum_threshold) &\
-                     (main_branch_mass_grow_mask[secondary_main_map])
-        major_merger_mlpid = main_leaf_progenitor_id[~main_branch_mask][major_mask]
-        major_merger_mlpid_unique = np.unique(major_merger_mlpid)
-        major_merger_mass_ratio_unique = np.zeros(
-            len(major_merger_mlpid_unique))
-        major_merger_mass_ratio_snap_unique = np.zeros(
-            len(major_merger_mlpid_unique),dtype=int)
-        # Get the largest mass ratio for each unique MainLeafProgenitorID
-        for i,mlpid in enumerate(major_merger_mlpid_unique):
-                mlpid_mask = major_merger_mlpid == mlpid
-                indx = np.argmax(mass_ratio[major_mask][mlpid_mask])
-                major_merger_mass_ratio_unique[i] = \
-                    mass_ratio[major_mask][mlpid_mask][indx]
-                major_merger_mass_ratio_snap_unique[i] = \
-                    snapnum[~main_branch_mask][major_mask][mlpid_mask][indx]
+    #     # Make a mask based on mass ratio, snapshot number, and add in 
+    #     # forced mass growth
+    #     mass_ratio = mass[~main_branch_mask] /\
+    #                  mass[main_branch_mask][secondary_main_map]
+    #     major_mask = (mass_ratio > mass_ratio_threshold) &\
+    #                  (mass_ratio < 1.0) &\
+    #                  (snapnum[~main_branch_mask] > snapnum_threshold) &\
+    #                  (main_branch_mass_grow_mask[secondary_main_map])
+    #     major_merger_mlpid = main_leaf_progenitor_id[~main_branch_mask][major_mask]
+    #     major_merger_mlpid_unique = np.unique(major_merger_mlpid)
+    #     major_merger_mass_ratio_unique = np.zeros(
+    #         len(major_merger_mlpid_unique))
+    #     major_merger_mass_ratio_snap_unique = np.zeros(
+    #         len(major_merger_mlpid_unique),dtype=int)
+    #     # Get the largest mass ratio for each unique MainLeafProgenitorID
+    #     for i,mlpid in enumerate(major_merger_mlpid_unique):
+    #             mlpid_mask = major_merger_mlpid == mlpid
+    #             indx = np.argmax(mass_ratio[major_mask][mlpid_mask])
+    #             major_merger_mass_ratio_unique[i] = \
+    #                 mass_ratio[major_mask][mlpid_mask][indx]
+    #             major_merger_mass_ratio_snap_unique[i] = \
+    #                 snapnum[~main_branch_mask][major_mask][mlpid_mask][indx]
                     
-        return major_merger_mlpid_unique, major_merger_mass_ratio_unique,\
-            major_merger_mass_ratio_snap_unique
+    #     return major_merger_mlpid_unique, major_merger_mass_ratio_unique,\
+    #         major_merger_mass_ratio_snap_unique
 
     def _find_major_mergers_mratio_at_tmax(self, mass_tmax_key='Mass',
         mass_mratio_key=None, mass_ratio_threshold=0.1, snapnum_threshold=20,
