@@ -50,6 +50,7 @@ class SublinkTree():
             self.main_branch_star_mass = (f['SubhaloMassType'][:,4]
                 [self.main_branch_mask])
             self.main_branch_snap = f['SnapNum'][self.main_branch_mask]
+            self.main_branch_mlpid = f['MainLeafProgenitorID'][0]
 
         # Will be initialized later if needed
         self.main_branch_mass_grow_mask = None
