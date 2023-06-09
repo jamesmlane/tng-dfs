@@ -681,4 +681,129 @@ def plot_mass_primary_secondary_branch(tree):
     Args:
         tree (dict) - Tree dictionary
     '''
+
+# Some classes for handling important information about the primary subhalo
+# and major mergers into the primary
+
+class TreePrimary():
+    '''TreePrimary:
+
+    Class to hold information about the primary subhalo from a sublink tree.
+    Useful for holding and accessing information about 
+    '''
+
+    def __init__(self,tree_major_mergers=[],**kwargs):
+        '''__init__:
+        
+        Initialise the class.
+
+        Args:
+
+            tree_major_mergers (list) - List of TreeMajorMerger objects
+                that merge into this primary subhalo
+            mlpid (int) - MainLeafProgenitorID of the primary subhalo
+            tree_filename (str) - Absolute filename of the sublink tree file
+        '''
+        self.tree_major_mergers = tree_major_mergers
+        self.n_major_mergers = len(tree_major_mergers)
+        self.mlpid = kwargs.get('mlpid',None)
+        self.tree_filename = kwargs.get('tree_filename',None)
+        
+        # Use the tree to get some of the important information
+        self.snapnum = None
+        self.subfind_id = None
+        if self.tree_filename is not None:
+            tree = self.get_tree()
+            assert self.mlpid == tree.get_property('MainLeafProgenitorID')[0]
+            self.snapnum = tree.main_branch_snap
+            self.subfind_id = tree.get_property('SubfindID')[tree.main_branch_mask]
     
+    def get_tree(self):
+        '''get_tree:
+
+        Get the sublink tree which includes this primary subhalo
+
+        Returns:
+            tree (SublinkTree) - SublinkTree object
+        '''
+        return SublinkTree(self.tree_filename)
+    
+    def get_cutout_filename(self,data_dir,snapnum=None,subfind_id=None):
+        '''get_cutout_filename:
+        
+        Using either the snapshot number or the subfind ID, get the filename
+        of the cutout file for this primary subhalo.
+
+        Args:
+            data_dir (str) - Data directory path as per the config file
+            snapnum (int) - Snapshot number of the cutout file, optional
+            subfind_id (int) - Subfind ID of the cutout file, optional
+        
+        '''
+
+
+class TreeMajorMerger():
+    '''TreeMajorMerger:
+
+    Class to hold information about one identified major merger from 
+    a sublink tree.
+    '''
+
+    def __init__(self,**kwargs):
+        '''__init__:
+        
+        Initialise the class.
+        
+        Args:
+            secondary_mlpid (int) - MainLeafProgenitorID of the secondary branch
+                representing the merger remnant
+            primary_mlpid (int) - MainLeafProgenitorID of the primary branch
+                into which the merger occurs
+            star_mass_ratio (float) - Stellar mass ratio of the merger as per 
+                the method used
+            star_mass_ratio_snapnum (int) - Snapshot number where the stellar 
+                mass ratio is calculated
+            dm_mass_ratio (float) - Dark matter mass ratio of the merger as per
+                the method used
+            dm_mass_ratio_snapnum (int) - Snapshot number where the dark matter
+                mass ratio is calculated
+            merger_snapnum (int) - Snapshot number where the secondary is no
+                longer detected
+            scheme (str) - String representing the method used to identify the
+                merger
+            scheme_kwargs (dict) - Dictionary of keyword arguments used to
+                identify the merger
+            tree_filename (str) - Absolute filename of the sublink tree file
+        '''
+        self.secondary_mlpid = kwargs.get('secondary_mlpid',None)
+        self.primary_mlpid = kwargs.get('primary_mlpid',None)
+        self.star_mass_ratio = kwargs.get('star_mass_ratio',None)
+        self.star_mass_ratio_snapnum = kwargs.get('star_mass_ratio_snapnum',None)
+        self.dm_mass_ratio = kwargs.get('dm_mass_ratio',None)
+        self.dm_mass_ratio_snapnum = kwargs.get('dm_mass_ratio_snapnum',None)
+        self.merger_snapnum = kwargs.get('merger_snapnum',None)
+        self.scheme = kwargs.get('scheme',None)
+        self.scheme_kwargs = kwargs.get('scheme_kwargs',None)
+        self.tree_filename = kwargs.get('tree_filename',None)
+
+        # Use the tree to get some of the important information
+        self.snapnum = None
+        self.subfind_id = None
+        self._tree_mask = None
+        if self.tree_filename is not None:
+            tree = self.get_tree()
+            tree_mask = tree.get_property('MainLeafProgenitorID') == \
+                self.secondary_mlpid
+            self.snapnum = tree.get_property('SnapNum')[tree_mask]
+            self.subfind_id = tree.get_property('SubfindID')[tree_mask]
+            self._tree_mask = tree_mask
+    
+    def get_tree(self):
+        '''get_tree:
+
+        Get the sublink tree which includes this secondary subhalo
+
+        Returns:
+            tree (SublinkTree) - SublinkTree object
+        '''
+        return SublinkTree(self.tree_filename)
