@@ -14,6 +14,7 @@ __author__ = "James Lane"
 
 ### Imports
 import numpy as np
+import warnings
 import h5py
 import scipy.interpolate
 
@@ -94,7 +95,8 @@ class SublinkTree():
             main_branch_mass_grow_mask (as above, if not return_mask)
         '''
         if mass_key is not None and return_mask is False:
-            print('Setting return_mask=True because mass_key is not default')
+            warnings.warn(
+                'Setting return_mask=True because mass_key is not default')
             return_mask = True
         if mass_key is None:
             main_branch_mass = self.main_branch_mass
@@ -120,7 +122,8 @@ class SublinkTree():
                 main_branch_mass[main_branch_mass_grow_mask]) <= 0),\
                 "Main branch mass is not monotonically increasing"
         if return_mask:
-            print('Returning mask, not setting self.main_branch_mass_grow_mask')
+            warnings.warn(
+                'Returning mask, not setting self.main_branch_mass_grow_mask')
             return main_branch_mass_grow_mask
         else:
             self.main_branch_mass_grow_mask = main_branch_mass_grow_mask
@@ -565,10 +568,12 @@ def _find_mapping_secondary_to_main_branch(main_branch_snap,
                   secondary_branch_snap):
         unique_failed_snaps = np.unique(secondary_branch_snap[
             main_branch_snap[secondary_main_map] != secondary_branch_snap])
-        print('Warning: detected mismatch between main and secondary branch '
-              'for snapshots: ',unique_failed_snaps, ' - if this is for small '
-              'numbered snapshots then it is likely due to the main branch '
-              'not reaching snap 0')
+        warning_msg = (
+            'Warning: detected mismatch between main and secondary branch '
+            'for snapshots: '+str(unique_failed_snaps)+' - if this is for small '
+            'numbered snapshots then it is likely due to the main branch '
+            'not reaching snap 0')
+        warnings.warn(warning_msg)
     if _check: # This can fail if the main branch doesn't get to snap 0
         assert np.all(main_branch_snap[secondary_main_map] ==\
             secondary_branch_snap)
