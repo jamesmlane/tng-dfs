@@ -281,7 +281,7 @@ class SublinkTree():
                 major_merger_mass_ratio[descends_to_main_mask]
             major_merger_mass_ratio_snap = \
                 major_merger_mass_ratio_snap[descends_to_main_mask]
-
+        
         return major_merger_mlpid,major_merger_mass_ratio,\
             major_merger_mass_ratio_snap
 
@@ -349,7 +349,9 @@ class SublinkTree():
             major_merger_mass_ratio_snap_unique
 
     def _find_major_mergers_mratio_at_tmax(self, mass_tmax_key='Mass',
-        mass_mratio_key=None, mass_ratio_threshold=0.1, snapnum_threshold=20):
+        mass_mratio_key=None, mass_ratio_threshold=0.1, snapnum_threshold=20,
+        mask_main_branch_mass_growing=False, 
+        use_interpolated_main_branch_mass=False):
         '''_find_major_mergers_mratio_at_tmax:
 
         Routine to identify major mergers from the tree using the mass ratio of 
@@ -385,22 +387,36 @@ class SublinkTree():
             major_merger_mass_ratio (np.array) - Mass ratio of the secondary 
                 branch to the main branch at the time of the merger.
         '''
+        if mask_main_branch_mass_growing and use_interpolated_main_branch_mass:
+            print('mask_main_branch_mass_growing and ' +\
+                'use_interpolated_main_branch_mass are both True, ' +\
+                'use_interpolated_main_branch_mass will be ignored')
+            use_interpolated_main_branch_mass = False
+
         # Get important properties
         mass_tmax = self.get_property(mass_tmax_key)
         if mass_mratio_key is None:
             mass_mratio_key = mass_tmax_key
         mass_mratio = self.get_property(mass_mratio_key)
+        if use_interpolated_main_branch_mass:
+            mass_mratio_interp = self.get_main_branch_mass_growing_interpolator(
+                mass_key=mass_mratio_key)
+            main_branch_mass_mratio_interpolated = mass_mratio_interp(
+                self.main_branch_snap)
         snapnum = self.get_property('SnapNum')
         main_leaf_progenitor_id = self.get_property('MainLeafProgenitorID')
         subhalo_id = self.get_property('SubhaloID')
         descendent_id = self.get_property('DescendantID')
         main_branch_mask = self.main_branch_mask
         secondary_main_map = self.secondary_main_map
+        all_main_map = self.all_main_map
         assert secondary_main_map is not None, \
             'secondary_main_map is None, call find_mapping_secondary_to_main_branch()'
-        # main_branch_mass_grow_mask = self.main_branch_mass_grow_mask
-        # assert main_branch_mass_grow_mask is not None, \
-        #     'main_branch_mass_grow_mask is None, call find_main_branch_mass_grow_mask()'
+        
+        # Recalculate the main branch mass growing mask to make sure it uses 
+        # the same mass as mass ratio calculations
+        main_branch_mass_grow_mask = self.find_where_main_branch_mass_growing(
+            mass_key=mass_mratio_key, return_mask=True)
         
         # First find all branches that merge to the main branch
         descend_mask = np.isin(descendent_id[~main_branch_mask],
@@ -408,25 +424,35 @@ class SublinkTree():
         descend_mlpid = main_leaf_progenitor_id[~main_branch_mask][descend_mask]
         
         # Loop over all branches that merge to the main branch
-        mass_ratio_mask = np.zeros(len(descend_mlpid),dtype=bool)
+        major_merger_mask = np.zeros(len(descend_mlpid),dtype=bool)
         mass_ratio = np.zeros(len(descend_mlpid))
         mass_ratio_snapnum = np.zeros(len(descend_mlpid),dtype=int)
         for i,mlpid in enumerate(descend_mlpid):
             branch_mask = main_leaf_progenitor_id == mlpid
+            if mask_main_branch_mass_growing:
+                branch_mask &= (main_branch_mass_grow_mask[all_main_map])
+            if np.sum(branch_mask) == 0:
+                major_merger_mask[i] = False
+                continue
             branch_mass_max_ind = np.argmax(mass_tmax[branch_mask])
             branch_mass_max = mass_mratio[branch_mask][branch_mass_max_ind]
-            main_mass_tmax = mass_mratio[main_branch_mask][secondary_main_map][branch_mask[~main_branch_mask]][branch_mass_max_ind]
+            if use_interpolated_main_branch_mass:
+                main_mass_tmax = (main_branch_mass_mratio_interpolated
+                    [secondary_main_map][branch_mask[~main_branch_mask]]
+                    [branch_mass_max_ind])
+            else:
+                main_mass_tmax = (mass_mratio[main_branch_mask]
+                    [secondary_main_map][branch_mask[~main_branch_mask]]
+                    [branch_mass_max_ind])
             mass_ratio[i] = branch_mass_max / main_mass_tmax
             mass_ratio_snapnum[i] = snapnum[branch_mask][branch_mass_max_ind]
-            if mass_ratio[i] > mass_ratio_threshold and\
-                mass_ratio[i] < 1.0 and\
-                snapnum[branch_mask][branch_mass_max_ind] > snapnum_threshold: # and\
-                # main_branch_mass_grow_mask[secondary_main_map][branch_mass_max_ind]:
-                mass_ratio_mask[i] = True
+            branch_valid = (mass_ratio[i] > mass_ratio_threshold) &\
+                (snapnum[branch_mask][branch_mass_max_ind] > snapnum_threshold)
+            major_merger_mask[i] = branch_valid
 
-        major_merger_mass_ratio = mass_ratio[mass_ratio_mask]
-        major_merger_mlpid = descend_mlpid[mass_ratio_mask]
-        major_merger_mass_ratio_snapnum = mass_ratio_snapnum[mass_ratio_mask]
+        major_merger_mass_ratio = mass_ratio[major_merger_mask]
+        major_merger_mlpid = descend_mlpid[major_merger_mask]
+        major_merger_mass_ratio_snapnum = mass_ratio_snapnum[major_merger_mask]
 
         return major_merger_mlpid, major_merger_mass_ratio,\
             major_merger_mass_ratio_snapnum
