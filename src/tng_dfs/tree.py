@@ -240,6 +240,8 @@ class SublinkTree():
                 that defines the merger actually descends to the main branch 
                 at some point (rather than another secondary branch), 
                 this is recommended, default True
+            return_as_class (bool) - Return as a list of TreeMajorMerger
+                objects, default False
                     
         Returns:
             major_merger_mlpid (np.array) - MainLeafProgenitorID of the 
@@ -247,6 +249,8 @@ class SublinkTree():
                 a major merger.
             major_merger_mass_ratio (np.array) - Mass ratio of the secondary 
                 branch to the main branch at the time of the merger.
+            major_merger_mass_ratio_snap (np.array) - Snapshot (redshift) of
+                the merger.
         '''
         # Check which scheme to use
         if scheme == 'mratio_at_z_ensure_mgrow':
@@ -366,6 +370,12 @@ class SublinkTree():
                 to main branch subhalos, default 0.1
             snapnum_threshold (int) - Threshold for the snapshot number of the
                 secondary branch subhalo, default 20
+            mask_main_branch_mass_growing (bool) - If True, then mask out 
+                snapshots where the main branch mass is not increasing, and 
+                determine the mass ratio using another snapshot, default False
+            use_interpolated_main_branch_mass (bool) - If True, then use 
+                linearly interpolated main branch mass where the mass is not 
+                increasing, default False
         
         Returns:
             major_merger_mlpid (np.array) - MainLeafProgenitorID of the 
@@ -428,16 +438,20 @@ class SublinkTree():
         the main branch at some point, or onto another secondary_branch.
 
         Args:
-        mlpid (int) - MainLeafProgenitorID of the branch to check
-        subhalo_id (np.array) - SubhaloID of all subhalos in the tree, 
-            len() is length of the whole tree including main branch.
-        descendent_id (np.array) - DescendantID of all subhalos in the tree, 
-            len() is length of the whole tree including main branch.
-        main_leaf_progenitor_id (np.array) - MainLeafProgenitorID of all 
-            subhalos in the tree, len() is length of the whole tree including 
-            main branch.
-        main_branch_mask (np.array) - Boolean mask for main branch subhalos,
-            len() is length of the whole tree including main branch.
+            mlpid (int) - MainLeafProgenitorID of the branch to check
+            subhalo_id (np.array) - SubhaloID of all subhalos in the tree, 
+                len() is length of the whole tree including main branch.
+            descendent_id (np.array) - DescendantID of all subhalos in the tree, 
+                len() is length of the whole tree including main branch.
+            main_leaf_progenitor_id (np.array) - MainLeafProgenitorID of all 
+                subhalos in the tree, len() is length of the whole tree including 
+                main branch.
+            main_branch_mask (np.array) - Boolean mask for main branch subhalos,
+                len() is length of the whole tree including main branch.
+            
+        Returns:
+            mlpid_descends_to_main (bool) - True if the branch descends onto the
+                main branch at some point, False otherwise.
         '''
         if subhalo_id is None:
             subhalo_id = self.get_property('SubhaloID')
