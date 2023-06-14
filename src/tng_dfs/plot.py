@@ -404,7 +404,8 @@ def plot_merger_information(tree,mlpid,threshold_mass_ratio=0.1,
     fig.subplots_adjust(hspace=0.1)
     return fig,axs
 
-def plot_merger_scheme_comparison(data_1,data_2,plot_mlpids=False):
+def plot_merger_scheme_comparison(data_1,data_2,plot_mlpids=False,
+    log_mass_ratio=False):
     '''plot_merger_scheme_comparison:
     
     Compare the secondary/primary mass ratios of the mergers identified using 
@@ -458,7 +459,6 @@ def plot_merger_scheme_comparison(data_1,data_2,plot_mlpids=False):
     # Plot the results
     ax1.scatter(mratio_1[common_mask_1],mratio_2[common_mask_2], s=24, 
         marker='o', edgecolors='Black', facecolors='Red')
-    ax1.plot([-10,10],[-10,10], color='Black', linestyle='dashed')
 
     # Plot scatter of mass ratio vs snapshot of accretion in each method
     ax2.scatter(mratio_1[common_mask_1],mratio_snap_1[common_mask_1], s=24,
@@ -472,16 +472,20 @@ def plot_merger_scheme_comparison(data_1,data_2,plot_mlpids=False):
         marker='s', edgecolors='Black', facecolors='LightGrey', zorder=2)
 
     if plot_mlpids:
+        for i in range(len(smlpid_1[common_mask_1])):
+            ax1.text(mratio_1[common_mask_1][i],mratio_2[common_mask_2][i],
+                str(smlpid_1[common_mask_1][i])[-5:],fontsize=3,color='Grey',
+                zorder=4)
         for i in range(len(smlpid_1)):
             ax2.text(mratio_1[i],mratio_snap_1[i],str(smlpid_1[i])[-5:],
-                fontsize=3,color='Grey')
+                fontsize=3,color='Grey',zorder=4)
         for i in range(len(smlpid_2)):
             ax4.text(mratio_snap_2[i],mratio_2[i],str(smlpid_2[i])[-5:],
-                fontsize=3,color='Grey')
+                fontsize=3,color='Grey',zorder=4)
 
     # Plot the marginalized histograms for each method
-    nbins = 11
-    hrange = [0,1]
+    nbins = 5000
+    hrange = [0.1,500]
     common_color = 'LightGrey'
     uncommon_color = 'Red'
     ax3.hist(mratio_1, bins=nbins, range=hrange, histtype='step', 
@@ -496,10 +500,54 @@ def plot_merger_scheme_comparison(data_1,data_2,plot_mlpids=False):
         color=uncommon_color, linewidth=2, linestyle='dashed', zorder=3,
         orientation='horizontal')
 
+    # Fiduxial line, and a faint dashed line at mratio=1
+    if log_mass_ratio:
+        ax1.plot([0,10000],[0,10000], color='Black', linestyle='dashed')
+        ax1.plot([0.,1.,1.],[1.,1.,0.], color='Grey', linestyle='dashed',
+            linewidth=1.)
+    else:
+        ax1.plot([-1,2],[-1,2], color='Black', linestyle='dashed')
+        ax1.plot([-1.,1.,1.],[1.,1.,-1.], color='Grey', linestyle='dashed',
+            linewidth=1.)
+
     # Set limits and labels
-    xlim = [-0.1,1.1]
-    ylim = [-0.1,1.1]
+    # mratio_max = np.max([np.max(mratio_1),np.max(mratio_2)])
+    if log_mass_ratio:
+        xlim = [0.04,1000]
+        ylim = [0.04,1000]
+        for ax in [ax1,ax2,ax3]:
+            ax.set_xscale('log')
+        for ax in [ax1,ax4,ax5]:
+            ax.set_yscale('log')
+    else:
+        xlim = [-0.1,1.1]
+        ylim = [-0.1,1.1]
     slim = [0,100]
+
+    # show the points which are outside the limits, but which are common
+    for i in range(len(mratio_1[common_mask_1])):
+        if mratio_1[i] > xlim[1]:
+            ax1.scatter(0.95*xlim[1], mratio_2[common_mask_2][i], s=24, 
+                marker='o', edgecolor='Black', facecolor='Red')
+            ax1.arrow(0.96*xlim[1], mratio_2[common_mask_2][i], 
+                0.04*xlim[1], 0, length_includes_head=True, 
+                head_width=0.02*xlim[1], color='Black')
+            if plot_mlpids:
+                ax1.text(0.95*xlim[1], mratio_2[common_mask_2][i],
+                    str(smlpid_1[common_mask_1][i])[-5:],fontsize=3,color='Grey',
+                    zorder=4)
+        if mratio_2[i] > ylim[1]:
+            ax1.scatter(mratio_1[common_mask_1][i], 0.95*ylim[1], s=24, 
+                marker='o', edgecolor='Black', facecolor='Red')
+            ax1.arrow(mratio_1[common_mask_1][i], 0.96*ylim[1], 
+                0, 0.04*ylim[1], length_includes_head=True, 
+                head_width=0.02*ylim[1], color='Black')
+            if plot_mlpids:
+                ax1.text(mratio_1[common_mask_1][i], 0.95*ylim[1],
+                    str(smlpid_1[common_mask_1][i])[-5:],fontsize=3,color='Grey',
+                    zorder=4)
+    
+
     ax1.set_xlim(xlim)
     ax1.set_ylim(ylim)
     ax1.set_xlabel(r'$M_{\rm ratio}$ (dark matter)')
