@@ -16,25 +16,12 @@ __author__ = "James Lane"
 ### Imports
 
 ## Basic
-import numpy as np
 import sys, os, pdb
-import h5py
-import glob
-import copy
 import dill as pickle
-
-## Matplotlib
-import matplotlib
-from matplotlib import pyplot as plt
-import matplotlib.image as mpimg
 
 sys.path.insert(0,'../../src/')
 from tng_dfs import util as putil
-from tng_dfs import tree as ptree
 from tng_dfs.util import get
-
-### Notebook setup
-plt.style.use('../../src/_matplotlib/project.mplstyle') # This must be exactly here
 
 # Keywords
 cdict = putil.load_config_to_dict()
@@ -58,7 +45,6 @@ snaps = get( sim['snapshots'] )
 # Load major list
 with open('./data/all_major_list.pkl','rb') as f:
     all_major_list = pickle.load(f)
-##wi
 # Number of primary MW analogs under consideration
 n_mw = len(all_major_list)
 
@@ -66,7 +52,6 @@ n_mw = len(all_major_list)
 for i in range(len(snaps)):
     snap_path = data_dir+'cutouts/snap_'+str(snaps[i]['number'])+'/'
     os.makedirs(snap_path,exist_ok=True)
-###i
 
 # Loop over all mergers and download
 for i in range(n_mw):
@@ -94,19 +79,35 @@ for i in range(n_mw):
                   ' of snapshot '+str(this_subhalo['snap']))
             _=get(this_subhalo['cutouts']['subhalo'],directory=snap_path,
                   timeout=None)
-        ###k
-    ###j
-###i
 
-# Loop over all primaries and download
+# Loop over all primaries and download all snapshots for each 
 for i in range(n_mw):
     major_dict = all_major_list[i]
-    print('Downloading primary z=0 subhalo '+\
-           str(major_dict['primary_z0_subfind_id']))
-    this_subhalo = get(snaps[-1]['url']+'subhalos/'+\
-                       str(major_dict['primary_z0_subfind_id']), timeout=None)
-    snap_path = data_dir+'cutouts/snap_'+str(snaps[-1]['number'])+'/'
-    print('Downloading subhalo '+str(this_subhalo['id'])+\
-          ' of snapshot '+str(this_subhalo['snap']))
-    _=get(this_subhalo['cutouts']['subhalo'],directory=snap_path,timeout=None)
-###i
+    print('Downloading cutouts for subhalo with primary z=0 subfind id '+\
+          str(major_dict['primary_z0_subfind_id']))
+    primary = major_dict['major_list'][0]
+    primary_snaps = primary['snaps']
+    primary_subfind_ids = primary['subfind_ids']
+    primary_nsnaps = len(primary_snaps)
+
+    for j in range(primary_nsnaps):
+        this_subhalo = get(snaps[primary_snaps[j]]['url']+'subhalos/'+\
+                           str(primary_subfind_ids[j]), timeout=None)
+        assert primary_snaps[j] == this_subhalo['snap']
+        snap_path = data_dir+'cutouts/snap_'+str(primary_snaps[j])+'/'
+        print('Downloading subhalo '+str(this_subhalo['id'])+\
+              ' of snapshot '+str(this_subhalo['snap']))
+        _=get(this_subhalo['cutouts']['subhalo'],directory=snap_path,
+              timeout=None)
+
+# # Loop over all primaries and download the z=0 snapshot for each
+# for i in range(n_mw):
+#     major_dict = all_major_list[i]
+#     print('Downloading primary z=0 subhalo '+\
+#            str(major_dict['primary_z0_subfind_id']))
+#     this_subhalo = get(snaps[-1]['url']+'subhalos/'+\
+#                        str(major_dict['primary_z0_subfind_id']), timeout=None)
+#     snap_path = data_dir+'cutouts/snap_'+str(snaps[-1]['number'])+'/'
+#     print('Downloading subhalo '+str(this_subhalo['id'])+\
+#           ' of snapshot '+str(this_subhalo['snap']))
+#     _=get(this_subhalo['cutouts']['subhalo'],directory=snap_path,timeout=None)
