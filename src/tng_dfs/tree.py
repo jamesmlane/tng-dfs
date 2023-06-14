@@ -17,6 +17,7 @@ import numpy as np
 import warnings
 import h5py
 import scipy.interpolate
+import os
 
 # ----------------------------------------------------------------------------
 
