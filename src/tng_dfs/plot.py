@@ -192,14 +192,24 @@ def plot_all_merger_traces(tree,mlpids,snap_threshold=20,
     return fig, axs
 
 def plot_merger_information(tree,mlpid,threshold_mass_ratio=0.1,
-    threshold_mass_star_ratio=0.1, threshold_snap=20, 
+    threshold_mass_star_ratio=0.1, threshold_snap=20, snap_mass_ratio=None,
+    snap_mass_star_ratio=None,
     main_leaf_progenitor_id=None, subfind_id=None,mass=None,mass_star=None,
     snap=None):
     '''plot_merger_information:
 
+    Plot the merger information for a given main leaf progenitor id.
+
+    If both snapshot variables are None then will calculate the snapshots using 
+    the maximum mass of each component.
+
     Args:
         tree (tng_dfs.tree.SublinkTree) - merger tree object
         mlpid (int) - main leaf progenitor id of the secondary branch to plot
+        snap_mass_ratio (int) - Snapshot where the dark matter mass ratio was 
+            recorded [default: None]
+        snap_mass_star_ratio (int) - Snapshot where the stellar mass ratio was 
+            recorded [default: None]
         tree data (np.ndarray) - data from tree, will be loaded if not provided:
             - main_leaf_progenitor_id (MainLeafProgenitorID)
             - subfind_id (SubfindID)
