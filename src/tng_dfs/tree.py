@@ -719,51 +719,37 @@ def get_mask_from_particle_ids(primary_id,secondary_id):
     mask = np.take(primary_id_indx, primary_id_sorted_indx, mode='clip')
     return mask
 
-def plot_mass_primary_secondary_branch(tree):
-    '''plot_mass_primary_secondary_branch:
 
-    Plot the masses of a secondary branch and compare with the primary branch
-
-    Args:
-        tree (dict) - Tree dictionary
-    '''
+# ----------------------------------------------------------------------------
 
 # Some classes for handling important information about the primary subhalo
-# and major mergers into the primary
+# and major mergers into the primary, specifically data products.
 
-class TreePrimary():
-    '''TreePrimary:
+class TreeInfo(object):
+    '''TreeInfo:
 
-    Class to hold information about the primary subhalo from a sublink tree.
-    Useful for holding and accessing information about 
+    Superclass to hold information about a sublink tree, specifically various 
+    mergers and the availability of snapshots/data products.
+
+    Also provides access to methods common to TreePrimary and TreeMajorMerger.
     '''
 
-    def __init__(self,tree_major_mergers=[],**kwargs):
+    def __init__(self,tree_filename):#,**kwargs):
         '''__init__:
-        
+
         Initialise the class.
-
-        Args:
-
-            tree_major_mergers (list) - List of TreeMajorMerger objects
-                that merge into this primary subhalo
-            mlpid (int) - MainLeafProgenitorID of the primary subhalo
-            tree_filename (str) - Absolute filename of the sublink tree file
-        '''
-        self.tree_major_mergers = tree_major_mergers
-        self.n_major_mergers = len(tree_major_mergers)
-        self.mlpid = kwargs.get('mlpid',None)
-        self.tree_filename = kwargs.get('tree_filename',None)
         
-        # Use the tree to get some of the important information
-        self.snapnum = None
-        self.subfind_id = None
-        if self.tree_filename is not None:
-            tree = self.get_tree()
-            assert self.mlpid == tree.get_property('MainLeafProgenitorID')[0]
-            self.snapnum = tree.main_branch_snap
-            self.subfind_id = tree.get_property('SubfindID')[tree.main_branch_mask]
-    
+        Args:
+            tree_filename (str) - Absolute filename of the sublink tree file
+        
+        Raises:
+            IOError: If the tree file does not exist
+        '''
+        if not os.path.isfile(tree_filename):
+            raise IOError('Tree file {} does not exist'.format(tree_filename))
+        self.tree_filename = tree_filename
+        # self.attribute = kwargs.get('attribute',None)
+
     def get_tree(self):
         '''get_tree:
 
@@ -773,8 +759,8 @@ class TreePrimary():
             tree (SublinkTree) - SublinkTree object
         '''
         return SublinkTree(self.tree_filename)
-    
-    def get_cutout_filename(self,data_dir,snapnum=None,subfind_id=None):
+
+    def get_cutout_filename(self,data_dir,snapnum,subfind_id=None):
         '''get_cutout_filename:
         
         Using either the snapshot number or the subfind ID, get the filename
@@ -785,22 +771,80 @@ class TreePrimary():
             snapnum (int) - Snapshot number of the cutout file, optional
             subfind_id (int) - Subfind ID of the cutout file, optional
         
+        Returns:
+            fname (str) - Absolute filename of the cutout file
+        
+        Raises:
+            ValueError: If subfind_id is not provided and the class does not 
+                have subfind_id/snapnum loaded as attributes from the tree file
+            IOError: If the cutout file does not exist
         '''
+        if subfind_id is None and hasattr(self,'subfind_id') and hasattr(self,'snapnum'):
+            subfind_id = self.subfind_id[self.snapnum==snapnum][0]
+        else:
+            raise ValueError('Must provide either subfind_id or have '
+                'subfind_id/snapnum loaded as attributes from the tree file '
+                '(provide tree_filename)')
+        snap_path = data_dir+'/cutouts/snap_'+str(snapnum)+'/'
+        fname = snap_path+'_subfind_'+str(subfind_id)+'.hdf5'
+        if not os.path.isfile(fname):
+            raise IOError('File '+fname+' does not exist')
+        return fname
 
+class TreePrimary(TreeInfo):
+    '''TreePrimary:
 
-class TreeMajorMerger():
+    Class to hold information about the primary subhalo from a sublink tree.
+    Useful for holding and accessing information relevent to data products, 
+    as well as recorded mergers into the primary.
+    '''
+
+    def __init__(self,tree_filename,tree_major_mergers=[],**kwargs):
+        '''__init__:
+        
+        Initialise the class.
+
+        Args:
+            tree_major_mergers (list) - List of TreeMajorMerger objects
+                that merge into this primary subhalo
+        
+        Keyword Args:
+            mlpid (int) - MainLeafProgenitorID of the primary subhalo
+            tree_filename (str) - Absolute filename of the sublink tree file
+        '''
+        # Initialize base class
+        super(TreePrimary,self).__init__(tree_filename,**kwargs)
+
+        # Initialize this class
+        self.tree_major_mergers = tree_major_mergers
+        self.n_major_mergers = len(tree_major_mergers)
+        self.mlpid = kwargs.get('mlpid',None)
+        
+        # Use the tree to get some of the important information
+        self.snapnum = None
+        self.subfind_id = None
+        if self.tree_filename is not None:
+            tree = self.get_tree()
+            assert self.mlpid == tree.get_property('MainLeafProgenitorID')[0]
+            self.snapnum = tree.main_branch_snap
+            self.subfind_id = tree.get_property('SubfindID')[tree.main_branch_mask]
+
+class TreeMajorMerger(TreeInfo):
     '''TreeMajorMerger:
 
     Class to hold information about one identified major merger from 
     a sublink tree.
     '''
 
-    def __init__(self,**kwargs):
+    def __init__(self,tree_filename,**kwargs):
         '''__init__:
         
         Initialise the class.
         
         Args:
+            tree_filename (str) - Absolute filename of the sublink tree file
+        
+        Keyword Args:
             secondary_mlpid (int) - MainLeafProgenitorID of the secondary branch
                 representing the merger remnant
             primary_mlpid (int) - MainLeafProgenitorID of the primary branch
@@ -819,8 +863,11 @@ class TreeMajorMerger():
                 merger
             scheme_kwargs (dict) - Dictionary of keyword arguments used to
                 identify the merger
-            tree_filename (str) - Absolute filename of the sublink tree file
         '''
+        # Initialize base class
+        super(TreeMajorMerger,self).__init__(tree_filename,**kwargs)
+
+        # Initialize this class
         self.secondary_mlpid = kwargs.get('secondary_mlpid',None)
         self.primary_mlpid = kwargs.get('primary_mlpid',None)
         self.star_mass_ratio = kwargs.get('star_mass_ratio',None)
@@ -830,11 +877,12 @@ class TreeMajorMerger():
         self.merger_snapnum = kwargs.get('merger_snapnum',None)
         self.scheme = kwargs.get('scheme',None)
         self.scheme_kwargs = kwargs.get('scheme_kwargs',None)
-        self.tree_filename = kwargs.get('tree_filename',None)
 
         # Use the tree to get some of the important information
         self.snapnum = None
         self.subfind_id = None
+        self._tree_indx = None
+        self._len_tree = None
         self._tree_mask = None
         if self.tree_filename is not None:
             tree = self.get_tree()
@@ -842,14 +890,7 @@ class TreeMajorMerger():
                 self.secondary_mlpid
             self.snapnum = tree.get_property('SnapNum')[tree_mask]
             self.subfind_id = tree.get_property('SubfindID')[tree_mask]
-            self._tree_mask = tree_mask
-    
-    def get_tree(self):
-        '''get_tree:
-
-        Get the sublink tree which includes this secondary subhalo
-
-        Returns:
-            tree (SublinkTree) - SublinkTree object
-        '''
-        return SublinkTree(self.tree_filename)
+            self._tree_indx = np.where(tree_mask)
+            self._len_tree = len(tree.get_property('Mass'))
+            # self._tree_mask = tree_mask
+            assert np.all(tree_mask == self._get_tree_mask())
