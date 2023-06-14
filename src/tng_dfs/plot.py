@@ -239,12 +239,22 @@ def plot_merger_information(tree,mlpid,threshold_mass_ratio=0.1,
         mass[tree.main_branch_mask][tree.secondary_main_map][branch_mask]
     
     # Determine redshift of maximum secondary mass, stellar mass
-    z_tmax = putil.snapshot_to_redshift(
-        snap[~tree.main_branch_mask][branch_mask]
-        [np.argmax(mass[~tree.main_branch_mask][branch_mask])])
-    z_tmax_star = putil.snapshot_to_redshift(
-        snap[~tree.main_branch_mask][branch_mask]
-        [np.argmax(mass_star[~tree.main_branch_mask][branch_mask])])
+    if snap_mass_ratio is not None:
+        z_tmax = putil.snapshot_to_redshift(snap_mass_ratio)
+    else:
+        z_tmax = None
+    if snap_mass_star_ratio is not None:
+        z_tmax_star = putil.snapshot_to_redshift(snap_mass_star_ratio)
+    else:
+        z_tmax_star = None
+    
+    if snap_mass_ratio is None and snap_mass_star_ratio is None:
+        z_tmax = putil.snapshot_to_redshift(
+            snap[~tree.main_branch_mask][branch_mask]
+            [np.argmax(mass[~tree.main_branch_mask][branch_mask])])
+        z_tmax_star = putil.snapshot_to_redshift(
+            snap[~tree.main_branch_mask][branch_mask]
+            [np.argmax(mass_star[~tree.main_branch_mask][branch_mask])])
 
     # Plot the main branch
     axs[0].plot(1+putil.snapshot_to_redshift(snap[tree.main_branch_mask]),
@@ -376,10 +386,12 @@ def plot_merger_information(tree,mlpid,threshold_mass_ratio=0.1,
     
     # Add lines
     for k in range(len(axs)):
-        axs[k].axvline(1+z_tmax, linestyle='dotted', color='Black', 
-            linewidth=1.0, zorder=3)
-        axs[k].axvline(1+z_tmax_star, linestyle='dotted', color='Red', 
-            linewidth=1.0, zorder=3)
+        if z_tmax is not None:
+            axs[k].axvline(1+z_tmax, linestyle='dotted', color='Black', 
+                linewidth=1.0, zorder=3)
+        if z_tmax_star is not None:
+            axs[k].axvline(1+z_tmax_star, linestyle='dotted', color='Red', 
+                linewidth=1.0, zorder=3)
     axs[1].axhline(0.1, linestyle='dotted', color='Black', linewidth=1., 
         zorder=3)
     axs[2].axhline(0.1, linestyle='dotted', color='Black', linewidth=1.,
