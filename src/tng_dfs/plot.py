@@ -602,22 +602,27 @@ def plot_merger_scheme_comparison(data_1,data_2,plot_mlpids=False,
 
     return fig,[ax1,ax2,ax3,ax4,ax5]
 
-def plot_jeans_diagnostics(Js,rs,qs,adf=None,r_range=None,norm_by_nuvr2_r=True):
+def plot_jeans_diagnostics(Js,rs,qs,adf=None,r_range=None):
     '''plot_jeans_diagnostics:
     
+    Plot many quantities related to the Jeans equations.
+
     Args:
-        Js (array) - 
-        rs (array) - 
-        qs (array) - 
+        Js (array) - Array of Jeans equation terms, shape len(rs)
+        rs (array) - Radii of bin centers where Js were calculated
+        qs (array) - List of kinematic quantities from 
+            kinematics.calculate_spherical_jeans_quantities()
         adf (galpy.df object) - Distribution function representing the sample 
             being plotted. Will be used to plot force, velocity dispersions, 
             density profile for comparison.
         r_range (list) - Radial range for plotting, only considered if adf 
             is not None, default None
-        norm_by_nuvr2_r (bool) - If True, the Jeans quantity is normalized by 
-            nuvr2/r, default True
-    '''
     
+    Returns:
+        fig (matplotlib figure) - Figure
+        axs (array of matplotlib axes) - Axes
+    '''
+
     plot_jeans_sigmas = True
     data_color = 'Black'
     data_linewidth = 2.
@@ -653,11 +658,8 @@ def plot_jeans_diagnostics(Js,rs,qs,adf=None,r_range=None,norm_by_nuvr2_r=True):
     axs[0].axhline(0, color='Black', linestyle='--', linewidth=0.5)
     axs[0].set_xlim(0,50)
     axs[0].set_xlabel('r [kpc]')
-    if norm_by_nuvr2_r:
-        axs[0].set_ylabel(r'$J / (\nu \bar{v_{r}^{2}} / r)$')
-    else:
-        axs[0].set_ylabel('$J$')
-    fig.suptitle('Hernquist, scale 10 kpc')
+    # Assume that J is normalized
+    axs[0].set_ylabel(r'$J / (\nu \bar{v_{r}^{2}} / r)$')
 
     # Density in the second upper panel
     lnu,mnu,unu = percfunc(qs[2])
