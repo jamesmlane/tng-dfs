@@ -62,9 +62,6 @@ txt = 'Downloading cutouts for all primaries...\n'+'-'*50
 print(txt)
 log_file.write(txt+'\n')
 for i in range(n_mw):
-    if i > 10:
-        continue
-
     primary = tree_primaries[i]
     z0_sid = primary.subfind_id[0]
     txt = 'Getting cutouts for primary with z=0 subfind id: '+str(z0_sid)+'...'
@@ -84,8 +81,16 @@ for i in range(n_mw):
             log_file.write(txt+'\n')
             continue
         # Fetch the subhalo
-        subhalo = putil.get(snaps[sn]['url']+'subhalos/'+str(sid),
-            timeout=None)
+        try:
+            subhalo = putil.get(snaps[sn]['url']+'subhalos/'+str(sid),
+                timeout=None)
+        except Exception as e:
+            exceptions.append((e,sn,sid))
+            txt = 'Exception raised for subhalo '+str(sid)+' of snapshot '+\
+                str(sn)+' while fetching subhalo'
+            print(txt)
+            log_file.write(txt+'\n')
+            continue
         # Some consistency checks
         assert sn == subhalo['snap']
         assert sid == subhalo['id']
@@ -99,7 +104,7 @@ for i in range(n_mw):
         except Exception as e:
             exceptions.append((e,sn,sid))
             txt = 'Exception raised for subhalo '+str(sid)+' of snapshot '+\
-                str(sn)
+                str(sn)+' while downloading cutout'
             print(txt)
             log_file.write(txt+'\n')
     # Communicate if all cutouts already exist
@@ -112,9 +117,6 @@ txt = '\n\n\nDownloading cutouts for major mergers...\n'+'-'*50
 print(txt)
 log_file.write(txt+'\n')
 for i in range(n_mw):
-    if i > 10:
-        continue
-
     primary = tree_primaries[i]
     z0_sid = primary.subfind_id[0]
     txt = 'Getting major merger cutouts for primary with z=0 subfind id: '+\
@@ -138,8 +140,16 @@ for i in range(n_mw):
                 major_has_data[k] = True
                 continue
             # Fetch the subhalo
-            subhalo = putil.get(snaps[sn]['url']+'subhalos/'+str(sid),
-                timeout=None)
+            try:
+                subhalo = putil.get(snaps[sn]['url']+'subhalos/'+str(sid),
+                    timeout=None)
+            except Exception as e:
+                exceptions.append((e,sn,sid))
+                txt = 'Exception raised for subhalo '+str(sid)+' of snapshot '+\
+                    str(sn)+' while fetching subhalo'
+                print(txt)
+                log_file.write(txt+'\n')
+                continue
             # Some consistency checks
             assert sn == subhalo['snap']
             assert sid == subhalo['id']
@@ -153,7 +163,7 @@ for i in range(n_mw):
             except Exception as e:
                 exceptions.append((e,sn,sid))
                 txt = 'Exception raised for subhalo '+str(sid)+' of snapshot '+\
-                    str(sn)
+                    str(sn)+' while downloading cutout'
                 print(txt)
                 log_file.write(txt+'\n')
         
