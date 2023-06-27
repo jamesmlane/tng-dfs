@@ -16,8 +16,10 @@ __author__ = "James Lane"
 import numpy as np
 import matplotlib as mpl
 from matplotlib import pyplot as plt
+import matplotlib
 from galpy import potential
 from astropy import units as apu
+import scipy.stats
 
 from . import util as putil
 
@@ -748,4 +750,308 @@ def plot_jeans_diagnostics(Js,rs,qs,adf=None,r_range=None):
     axs[7].set_ylabel(r'$\mathrm{d}\Phi/\mathrm{d}r$')
     axs[7].set_yscale('log')
     
+    return fig,axs
+
+def plot_dens_vdisp_beta(orbs,E=None,fig=None,axs=None):
+    '''plot_dens_vdisp_beta:
+
+    Plots the density, velocity dispersions, anisotropy profile
+
+    Args:
+        orbs (list): list of orbits to plot
+        E (float): energy of the orbits, requires potential energy from 
+            snapshots
+        fig,axs (matplotlib.pyplot figure and axes): if not None, plots on
+            these axes
+    
+    Returns:
+        fig,axs (matplotlib.pyplot figure and axes): figure and axes of the
+            plot
+    '''
+    label_fs = 14
+    v_colors = ['MediumBlue','Red','ForestGreen']
+    v_names = [r'$r$',r'$\phi$',r'$\theta$']
+    v_subscripts = [r'_{r}',r'_{\phi}',r'_{\theta}']
+    _percentiles = [16,50,84]
+    alpha_bg = 0.25
+    plot_ELz = True
+    cmap = plt.cm.get_cmap('viridis')
+    cmap.set_bad(color='white')
+
+    if fig is None or axs is None:
+        fig = plt.figure(figsize=(12,8))
+        # gso = fig.add_gridspec(1,4)
+        # gs1 = gso[0,0].subgridspec(3,1,hspace=0.3)
+        # gs2 = gso[0,1:].subgridspec(1,3,wspace=0.3)
+        # gs3 = gso[1:,1].subgridspec(3,1,hspace=0.1)
+        # gs4 = gso[1:,2].subgridspec(3,1,hspace=0.1)
+        # gs5 = gso[1:,3].subgridspec(3,1,hspace=0.1)
+        # ax1 = fig.add_subplot(gs1[0,0])
+        # ax2 = fig.add_subplot(gs1[1,0])
+        # ax3 = fig.add_subplot(gs1[2,0])
+        # ax4 = fig.add_subplot(gs2[0,0])
+        # ax5 = fig.add_subplot(gs2[0,1])
+        # ax6 = fig.add_subplot(gs2[0,2])
+        # c2_axs = [fig.add_subplot(gs3[i,0]) for i in range(3)]
+        # c3_axs = [fig.add_subplot(gs4[i,0]) for i in range(3)]
+        # c4_axs = [fig.add_subplot(gs5[i,0]) for i in range(3)]
+
+        gso = fig.add_gridspec(9,4)
+        gs1 = gso[:,0].subgridspec(3,1,hspace=0.3)
+        gs2 = gso[:3,1:].subgridspec(1,3,wspace=0.3)
+        gs3 = gso[3:,1].subgridspec(3,1,hspace=0.1)
+        gs4 = gso[3:,2].subgridspec(3,1,hspace=0.1)
+        gs5 = gso[3:,3].subgridspec(3,1,hspace=0.1)
+        ax1 = fig.add_subplot(gs1[0,0])
+        ax2 = fig.add_subplot(gs1[1,0])
+        ax3 = fig.add_subplot(gs1[2,0])
+        ax4 = fig.add_subplot(gs2[0,0])
+        ax5 = fig.add_subplot(gs2[0,1])
+        ax6 = fig.add_subplot(gs2[0,2])
+        c2_axs = [fig.add_subplot(gs3[i,0]) for i in range(3)]
+        c3_axs = [fig.add_subplot(gs4[i,0]) for i in range(3)]
+        c4_axs = [fig.add_subplot(gs5[i,0]) for i in range(3)]
+
+        # axs = fig.subplots(4,4)
+        # ax1 = axs[0,0]
+        # ax2 = axs[1,0]
+        # ax3 = axs[2,0]
+        # ax4 = axs[0,1]
+        # ax5 = axs[0,2]
+        # ax6 = axs[0,3]
+        # c2_axs = [axs[i+1,1] for i in range(3)]
+        # c3_axs = [axs[i+1,2] for i in range(3)]
+        # c4_axs = [axs[i+1,3] for i in range(3)]
+        # axs[3,0].axis('off')
+
+    # Bin kinematic properties / bootstrapping
+    nbin = 6
+    nbs = 20
+    r_max = 100
+    bin_edges = np.linspace(0,r_max,num=nbin+1)
+    bin_cents = (bin_edges[1:]+bin_edges[:-1])/2
+
+    nu = np.zeros((nbs,nbin))
+    counts = np.zeros((nbs,nbin))
+    mv = np.zeros((3,nbs,nbin))
+    v2 = np.zeros((3,nbs,nbin))
+    sv = np.zeros((3,nbs,nbin))
+    beta = np.zeros((3,nbs,nbin))
+    for i in range(nbs):
+        # Make the bootstrap sample
+        _orbs_bs_indx = np.random.randint(0,len(orbs),len(orbs))
+        _orbs_bs = orbs[_orbs_bs_indx]
+        rs = _orbs_bs.r(use_physical=True).to(apu.kpc).value
+        for j in range(len(bin_cents)):
+            bin_mask = (rs>=bin_edges[j]) & (rs<bin_edges[j+1])
+            n_in_bin = np.sum( bin_mask )
+            bin_vol = 4*np.pi/3*(bin_edges[j+1]**3-bin_edges[j]**3)
+            nu[i,j] = n_in_bin/bin_vol
+            counts[i,j] = n_in_bin
+            _vr = _orbs_bs.vr(use_physical=True).to(apu.km/apu.s).value[bin_mask]
+            _vp = _orbs_bs.vT(use_physical=True).to(apu.km/apu.s).value[bin_mask]
+            _vt = _orbs_bs.vtheta(use_physical=True).to(apu.km/apu.s).value[bin_mask]
+            for k,v in enumerate([_vr,_vp,_vt]):
+                mv[k,i,j] = np.mean(v)
+                v2[k,i,j] = np.mean(v**2.)
+                sv[k,i,j] = np.std(v)
+    beta = 1.-(v2[1]+v2[2])/(v2[0]*2.)
+
+    ## First panel: density
+    lnu,mnu,hnu = np.percentile(nu,_percentiles,axis=0)
+    ax1.plot(bin_cents, mnu, color='Black')
+    ax1.fill_between(bin_cents, lnu, hnu, color='Black', alpha=0.2)
+    ax1.set_xlabel(r'r [kpc]', fontsize=label_fs)
+    ax1.set_ylabel(r'density [kpc$^{-3}$]', fontsize=label_fs)
+    ax1.set_yscale('log')
+    ax1.set_xscale('log')
+    ax1.set_xlim(bin_cents[0]-1,120)
+
+    # Add fiducials
+    alphas = [1,2,3.01,4,5,6]
+    # alpha_labels = [r'$\alpha=$'+str(a) for a in [1,2,3,4,5,6]]
+    alpha_labels = [str(a) for a in [1,2,3,4,5,6]]
+    denspot_rs = np.arange(np.min(bin_cents),100.,1.)
+    for j in range(len(alphas)):
+        denspot = potential.PowerSphericalPotential(alpha=alphas[j],ro=8,vo=220)
+        fdens = potential.evaluateDensities(denspot, denspot_rs*apu.kpc, 0, 
+            use_physical=True).value
+        fdens *= (mnu[0]/fdens[0])
+        ax1.plot(denspot_rs, fdens, color='Blue', linestyle='dashed', 
+            alpha=0.5)
+        ax1.annotate(alpha_labels[j], xy=(denspot_rs[-1],fdens[-1]*1.5),
+            color='Blue', fontsize=8, va='center', alpha=1.0)
+    
+    ## Second panel: Optionally E-Lz
+    if E is not None and plot_ELz:
+        Lz = orbs.Lz(use_physical=True).to(apu.kpc*apu.km/apu.s).value
+        if isinstance(E,apu.Quantity):
+            E = E.to(apu.km**2/apu.s**2).value
+        # Plot binned data
+        Lz_range = [-3,3]
+        E_range = [-5,-1]
+        H, xedges, yedges = np.histogram2d(Lz/1e3, E/1e5, bins=[45,30],
+            range=[Lz_range,E_range])
+        H = np.rot90(H)
+        H = np.flipud(H)
+        Hmasked = np.ma.masked_where(H==0,H)
+        cmap = plt.cm.get_cmap('viridis')
+        cmap.set_bad(color='white')
+        ax2.pcolormesh(xedges,yedges,Hmasked,cmap=cmap)        
+        ax2.set_xlabel(r'Lz [$10^{3}$ kpc km/s]', fontsize=label_fs)
+        ax2.set_ylabel(r'E [$10^{5}$ km$^{2}$/s$^{2}$]', fontsize=label_fs)
+        # ax2.set_ylim(E_range[0],E_range[1])
+        ax2.set_xlim(Lz_range[0],Lz_range[1])
+        ax2.axvline(0, linestyle='dashed', linewidth=1., color='Grey')
+    else:
+        ax2.axis('off') 
+    
+    ## Third panel, beta
+    lbeta,mbeta,hbeta = np.percentile(beta,_percentiles,axis=0)
+    ax3.plot(bin_cents, mbeta, color='Black')
+    ax3.fill_between(bin_cents, lbeta, hbeta, color='Black', alpha=0.2)
+    ax3.set_xlabel(r'r [kpc]', fontsize=label_fs)
+    ax3.set_ylabel(r'$\beta$', fontsize=label_fs)
+    ax3.axhline(0, color='Black', linestyle='dashed')
+
+    ## Fourth panel, 2nd column top row, Number counts vs radius
+    lnu,mnu,hnu = np.percentile(counts,_percentiles,axis=0)
+    ax4.plot(bin_cents, mnu, marker='o', color='Black')
+    ax4.fill_between(bin_cents, lnu, hnu, color='Black', alpha=0.2)
+    ax4.set_xlabel(r'r [kpc]', fontsize=label_fs)
+    ax4.set_ylabel(r'Number count', fontsize=label_fs)
+    ax4.set_yscale('log')
+    ax4.set_xscale('log')
+    ax4.set_xlim(bin_cents[0]-1,120)
+    ax4.text(0.05, 0.3, r'$N_{tot} = $'+str(len(orbs)), transform=ax4.transAxes, 
+        fontsize=label_fs-6)
+    ax4.text(0.05, 0.2, (r'$N(r < '+str(r_max)+' \mathrm{kpc}) =$ '
+        +str(len(orbs[orbs.r() < r_max*apu.kpc]))), fontsize=label_fs-6,
+        transform=ax4.transAxes)
+    ax4.text(0.05, 0.1, (r'$f(r < '+str(r_max)+' \mathrm{kpc}) =$ '
+        +str(round(100*len(orbs[orbs.r() < r_max*apu.kpc])/len(orbs),2))+'\%'), 
+        fontsize=label_fs-6, transform=ax4.transAxes)
+
+    ## Fifth panel, 3rd column top row, cylindrical radial vs tangential velocity
+    vR = orbs.vr(use_physical=True).to(apu.km/apu.s).value
+    vT = orbs.vT(use_physical=True).to(apu.km/apu.s).value
+    # Plot binned data
+    vR_range = [-400,400]
+    vT_range = [-400,400]
+    H, xedges, yedges = np.histogram2d(vR, vT, bins=[30,30],
+        range=[vR_range,vT_range])
+    H = np.rot90(H)
+    H = np.flipud(H)
+    Hmasked = np.ma.masked_where(H==0,H)
+    cmap = plt.cm.get_cmap('viridis')
+    cmap.set_bad(color='white')
+    ax5.pcolormesh(xedges,yedges,Hmasked,cmap=cmap)
+    ax5.set_xlabel(r'$v_{R}$ [km/s]', fontsize=label_fs)
+    ax5.set_ylabel(r'$v_{T}$ [km/s]', fontsize=label_fs)
+    ax5.set_ylim(vR_range[0],vR_range[1])
+    ax5.set_xlim(vT_range[0],vT_range[1])
+    ax5.axhline(0, linestyle='dashed', linewidth=1., color='Grey')
+    ax5.axvline(0, linestyle='dashed', linewidth=1., color='Grey')
+    
+
+    ## Sixth panel, 4th column top row, radial vs. perpendicular velocity
+    vr = orbs.vr(use_physical=True).to(apu.km/apu.s).value
+    vp = orbs.vT(use_physical=True).to(apu.km/apu.s).value
+    vt = orbs.vtheta(use_physical=True).to(apu.km/apu.s).value
+    vperp = np.sqrt(vp**2.+vt**2.)
+    # Plot binned data
+    vr_range = [-200,200]
+    vperp_range = [0,400]
+    H, xedges, yedges = np.histogram2d(vr, vperp, bins=[30,30],
+        range=[vr_range,vperp_range])
+    H = np.rot90(H)
+    H = np.flipud(H)
+    Hmasked = np.ma.masked_where(H==0,H)
+    cmap = plt.cm.get_cmap('viridis')
+    cmap.set_bad(color='white')
+    ax6.pcolormesh(xedges,yedges,Hmasked,cmap=cmap)
+    ax6.set_xlabel(r'$v_{r}$ [km/s]', fontsize=label_fs)
+    ax6.set_ylabel(r'$v_{\perp}$ [km/s]', fontsize=label_fs)
+    ax6.set_ylim(vperp_range[0],vperp_range[1])
+    ax6.set_xlim(vr_range[0],vr_range[1])
+    ax6.axvline(0, linestyle='dashed', linewidth=1., color='Grey')
+
+    ## Second column: mean velocity profiles
+    for i in range(3):
+        for j in range(3):
+            lmv,mmv,hmv = np.percentile(mv[j],_percentiles,axis=0)
+            if i == j:
+                c2_axs[i].plot(bin_cents, mmv, color=v_colors[j], 
+                    zorder=5)#, label=v_names[j])
+                c2_axs[i].fill_between(bin_cents, lmv, hmv, color=v_colors[j], 
+                    alpha=0.3, zorder=4)
+            else:
+                c2_axs[i].plot(bin_cents, mmv, color=v_colors[j], 
+                    alpha=alpha_bg, zorder=3)#, label=v_names[j])
+                # c3_axs[j].fill_between(bin_cents, lsv, hsv, color=v_colors[i],
+                #     alpha=0.1, zorder=2)
+        c2_axs[i].axhline(0., color='Black', linestyle='dashed', 
+            linewidth=1, zorder=1)
+        c2_axs[i].set_ylabel(r'$\bar{v'+v_subscripts[i]+'}$ [km/s]', 
+            fontsize=label_fs)
+        if i == 2:
+            c2_axs[i].set_xlabel(r'r [kpc]', fontsize=label_fs)
+        else:
+            c2_axs[i].tick_params(labelbottom=False)
+    for i in range(3):
+        c2_axs[0].plot([],[],color=v_colors[i], label=r'$v'+v_subscripts[i]+'$')
+    c2_axs[0].legend(loc='best', fontsize=12, frameon=False)
+
+    # Third column: velocity dispersions / v2
+    for i in range(3):
+        for j in range(3):
+            lsv,msv,hsv = np.percentile(sv[j],_percentiles,axis=0)
+            if i == j:
+                c3_axs[i].plot(bin_cents, msv, color=v_colors[j], 
+                    label=v_names[j], zorder=5)
+                c3_axs[i].fill_between(bin_cents, lsv, hsv, color=v_colors[j],
+                    alpha=0.3, zorder=4)
+            else:
+                c3_axs[i].plot(bin_cents, msv, color=v_colors[j], 
+                    label=v_names[j], alpha=alpha_bg, zorder=3)
+                # c3_axs[j].fill_between(bin_cents, lsv, hsv, color=v_colors[i],
+                #     alpha=0.1, zorder=2)
+        c3_axs[i].set_ylabel(r'$\sigma'+v_subscripts[i]+'$ [km/s]', 
+            fontsize=label_fs)
+        if i == 2:
+            c3_axs[i].set_xlabel(r'r [kpc]', fontsize=label_fs)
+        else:
+            c3_axs[i].tick_params(labelbottom=False)
+
+    # Fourth column: velocity mean square
+    v2_sqrt = True
+    for i in range(3):
+        for j in range(3):
+            if v2_sqrt:
+                lv2,mv2,hv2 = np.percentile(np.sqrt(v2[j]),_percentiles,axis=0)
+            else:
+                lv2,mv2,hv2 = np.percentile(v2[j],_percentiles,axis=0)
+            if i == j:
+                c4_axs[i].plot(bin_cents, mv2, color=v_colors[j], 
+                    label=v_names[j], zorder=5)
+                c4_axs[i].fill_between(bin_cents, lv2, hv2, color=v_colors[j],
+                    alpha=0.3, zorder=4)
+            else:
+                c4_axs[i].plot(bin_cents, mv2, color=v_colors[j], 
+                    label=v_names[j], alpha=alpha_bg, zorder=3)
+                # c4_axs[j].fill_between(bin_cents, lv2, hv2, color=v_colors[i],
+                #     alpha=0.1, zorder=3)
+        if v2_sqrt:
+            c4_axs[i].set_ylabel((r'$\bigg[ \bar{v^{2}'+v_subscripts[i]+
+                r'} \bigg]^{1/2}$ [km/s]'), fontsize=label_fs)
+        else:
+            c4_axs[i].set_ylabel(r'$\bar{v^{2}'+v_subscripts[i]+r'}$ [km/s]', 
+                fontsize=label_fs)
+        if i == 2:
+            c4_axs[i].set_xlabel(r'r [kpc]', fontsize=label_fs)
+        else:
+            c4_axs[i].tick_params(labelbottom=False)
+
+    fig.tight_layout()
+    fig.subplots_adjust(wspace=0.05, hspace=0.05)
     return fig,axs
