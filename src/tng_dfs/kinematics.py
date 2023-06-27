@@ -26,16 +26,19 @@ _ro,_vo = putil.parse_config_dict(_cdict,_keywords)
 
 # ----------------------------------------------------------------------------
 
-def calculate_spherical_jeans_quantities(orbs,pot,r_range=[0,100],n_bin=10,
-    norm_by_galpy_scale_units=False,calculate_pe_with_pot=False,ro=_ro,vo=_vo):
+def calculate_spherical_jeans_quantities(orbs,pot=None,pe=None,r_range=[0,100],
+    n_bin=10,norm_by_galpy_scale_units=False,calculate_pe_with_pot=False,
+    t=None,ro=_ro,vo=_vo):
     '''calculate_spherical_jeans_quantities:
     
     Calculate the quantities used in the spherical Jeans equation.
     
     Args:
         orbs (Orbits) - Orbits object containing particles / kinematic sample
-        pot (Potential) - Potential object representing the gravitational 
-            potential experienced by orbs
+        pot (optional, Potential) - Potential object representing the 
+            gravitational potential experienced by orbs
+        pe (optional, array) - Potential energy of each particle in orbs, in
+            units of km^2/s^2 [default: None]
         r_range (optional, list) - Range of radii to consider, in kpc 
             [default: [0,100]]
         n_bin (optional, int) - Number of bins to use in calculating Jeans
@@ -43,9 +46,11 @@ def calculate_spherical_jeans_quantities(orbs,pot,r_range=[0,100],n_bin=10,
             n_bin+1 bins [default: 10]
         norm_by_galpy_scale_units (optional, bool) - If True, normalize the
             Jeans equation by galpy scale units [default: False]
-        calculate_pe_with_pot (optional, bool) - If True, calculate the 
+        calculate_pe_at_bin_cents (optional, bool) - If True, calculate the 
             potential at the bin centers, rather than the mean potential of the 
             orbs in the bin [default: False]
+        t (optional, float) - Time at which to calculate the Jeans equation,
+            used as an argument to the potential [default: None]
         ro (optional, float) - Distance scale in kpc [default: 8.275]
         vo (optional, float) - Velocity scale in km/s [default: 220.]
     
@@ -54,13 +59,19 @@ def calculate_spherical_jeans_quantities(orbs,pot,r_range=[0,100],n_bin=10,
             equation, output from calculate_spherical_jeans_quantities, 
             in order: dnuvr2dr,dphidr,nu,vr2,vp2,vt2,rs
     '''
+    # Make sure we have a potential
+    if pot is None:
+        assert pe is not None,\
+            "Must provide either a Potential or a potential energy array"
+    else:
+        pot = copy.deepcopy(pot)
+        pot.turn_physical_on(ro=ro,vo=vo)
+
+    # Handle orbits
     orbs = copy.deepcopy(orbs)
     orbs.turn_physical_on(ro=ro,vo=vo)
-    pot = copy.deepcopy(pot)
-    pot.turn_physical_on(ro=ro,vo=vo)
 
     ## Determine bins for kinematic properties
-    
     # First need bins for derivatives, one more bin than for the data itself, 
     # since we're taking derivatives
     n_dr_bin = n_bin+1
@@ -68,8 +79,7 @@ def calculate_spherical_jeans_quantities(orbs,pot,r_range=[0,100],n_bin=10,
     dr_bin_cents = (dr_bin_edge[1:]+dr_bin_edge[:-1])/2
     # dr_bin_delta = dr_bin_edge[1:]-dr_bin_edge[:-1]
 
-    # One fewer bin for data, since we're taking derivatives. The edges are 
-    # the derivative bin centers
+    # One fewer bin for data, The edges are the derivative bin centers
     bin_edge = copy.deepcopy(dr_bin_cents)
     bin_cents = (bin_edge[1:]+bin_edge[:-1])/2
     # bin_delta = bin_edge[1:]-bin_edge[:-1]
@@ -83,11 +93,13 @@ def calculate_spherical_jeans_quantities(orbs,pot,r_range=[0,100],n_bin=10,
     vt2 = np.zeros_like(bin_cents)
     vp2 = np.zeros_like(bin_cents)
 
+    # Handle potential energy
     rs = orbs.r(use_physical=True).to(apu.kpc).value
-    pe = potential.evaluatePotentials(pot,orbs.R(),orbs.z(),
-        use_physical=True).to(apu.km**2/apu.s**2).value
+    if pot is not None:
+        pe = potential.evaluatePotentials(pot,orbs.R(),orbs.z(),t=t,
+            use_physical=True).to(apu.km**2/apu.s**2).value
     pe_bin_cents = potential.evaluatePotentials(pot,dr_bin_cents*apu.kpc,
-        0*apu.kpc,use_physical=True).to(apu.km**2/apu.s**2).value
+        0*apu.kpc,t=t,use_physical=True).to(apu.km**2/apu.s**2).value
 
     # Derivative quantities
     for i in range(len(dr_bin_cents)):
@@ -136,7 +148,7 @@ def calculate_spherical_jeans_quantities(orbs,pot,r_range=[0,100],n_bin=10,
 
 def calculate_spherical_jeans(orbs,pot,r_range=[0,100],n_bin=10,
     norm_by_galpy_scale_units=False,norm_by_nuvr2_r=True,
-    calculate_pe_with_pot=False,return_kinematics=True,ro=_ro,vo=_vo):
+    calculate_pe_with_pot=False,return_kinematics=True,t=0.,ro=_ro,vo=_vo):
     '''calculate_spherical_jeans:
 
     Calculate the spherical Jeans equation for a given kinematic sample
@@ -159,6 +171,8 @@ def calculate_spherical_jeans(orbs,pot,r_range=[0,100],n_bin=10,
             orbs in the bin [default: False]
         return_kinematics (optional, bool) - If True, return the kinematics
             used to calculate the Jeans equation [default: True]
+        t (optional, float) - Time at which to calculate the Jeans equation,
+            used as an argument to the potential [default: None]
         ro (optional, float) - Distance scale in kpc [default: 8.275]
         vo (optional, float) - Velocity scale in km/s [default: 220.]
     
@@ -172,7 +186,7 @@ def calculate_spherical_jeans(orbs,pot,r_range=[0,100],n_bin=10,
     # Compute the 
     qs = calculate_spherical_jeans_quantities(orbs,pot,r_range=r_range,
         n_bin=n_bin,norm_by_galpy_scale_units=norm_by_galpy_scale_units,
-        calculate_pe_with_pot=calculate_pe_with_pot,ro=ro,vo=vo)
+        calculate_pe_with_pot=calculate_pe_with_pot,t=t,ro=ro,vo=vo)
 
     dnuvr2dr,dphidr,nu,vr2,vp2,vt2,rs = qs
 
