@@ -188,3 +188,41 @@ def calculate_spherical_jeans(orbs,pot,r_range=[0,100],n_bin=10,
         return J,rs,qs
     else:
         return J,rs
+    
+def calculate_weighted_average_J(J,rs,dens=None,qs=None,weights=None):
+    '''calculate_weighted_average_J:
+
+    Calculate the weighted average of the Jeans equation residual term + the 
+    dispersion. By default will weight by density*rs^2, which is the mass of 
+    the bin. Will get the density from qs if not provided. If weights are 
+    provided, will use those instead.
+
+    Args:
+        J (np.ndarray) - Jeans equation residual term
+        rs (np.ndarray) - Radii at which Jeans equation is calculated
+        dens (optional, np.ndarray) - Density profile of the kinematic sample
+            [default: None]
+        qs (optional, tuple) - Tuple of kinematic quantities used to calculate 
+            Jeans equation, output from calculate_spherical_jeans_quantities, 
+            in order: dnuvr2dr,dphidr,nu,vr2,vp2,vt2,rs [default: None]
+        weights (optional, np.ndarray) - Weights to use in calculating the
+            weighted average [default: None]
+    
+    Returns:
+        J_avg (float) - Weighted average of the Jeans equation residual term
+        J_dispersion (float) - Weighted average of the Jeans equation residual
+            term dispersion
+    '''
+    if dens is None:
+        if qs is None:
+            raise Exception('Must provide either qs or dens')
+        else:
+            dens = qs[2]
+    
+    if weights is None:
+        weights = dens*rs**2
+    
+    J_avg = np.average(J,weights=weights)
+    J_dispersion = np.sqrt(np.average((J-J_avg)**2,weights=weights))
+    
+    return J_avg,J_dispersion
