@@ -89,6 +89,7 @@ def parse_config_dict(cdict,keyword):
         ZO (float) - galpy vertical solar position
         HOME_DIR (string) - base directory for project
         DATA_DIR (string) - Directory for large data
+        MW_ANALOG_DIR (string) - Directory for MW analog data
         LITTLE_H (float) - Hubble constant in units of 100 km/s/Mpc
     
     Args:
@@ -124,7 +125,7 @@ def parse_config_dict(cdict,keyword):
             else:
                 return int(cdict[key])
         # Strings 
-        elif key in ['HOME_DIR','DATA_DIR']:
+        elif key in ['HOME_DIR','DATA_DIR','MW_ANALOG_DIR']:
             if _islist:
                 _value.append( cdict[key] )
             else:
@@ -145,7 +146,7 @@ def parse_config_dict(cdict,keyword):
 
 # Standard notebook preparation
 
-def prepare_mwsubs(data_dir,h=0.7,mw_mass_range=[5,7],return_vars=False,
+def prepare_mwsubs(mw_analog_dir,h=0.7,mw_mass_range=[5,7],return_vars=False,
     force_mwsubs=False):
     '''prepare_mwsubs:
 
@@ -153,7 +154,7 @@ def prepare_mwsubs(data_dir,h=0.7,mw_mass_range=[5,7],return_vars=False,
     mwsubs file
 
     Args:
-        data_dir (str) - Directory for large data from config
+        mw_analog_dir (str) - Directory for MW Analog data
         h (float) - Hubble constant in units of 100 km/s/Mpc from config,
             default 0.7
         mw_mass_range (arr) - Range of Milky Way stellar masses in 10**10 Msun
@@ -193,7 +194,7 @@ def prepare_mwsubs(data_dir,h=0.7,mw_mass_range=[5,7],return_vars=False,
     n_mw = len(mw_search_results)
 
     # Get subhalo data
-    mwsubs_path = data_dir+'subs/mwsubs.pkl'
+    mwsubs_path = mw_analog_dir+'subs/mwsubs.pkl'
     if force_mwsubs or os.path.exists(mwsubs_path) == False:
         print('Downloading subhalo data')
         mwsubs = []
