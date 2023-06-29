@@ -154,7 +154,7 @@ class TNGCutout():
         self._rot_ptype = rot_ptype
         self._rot_is_set = True
 
-    def get_masses(self,ptype,physical=True,internal=False,key=None):
+    def get_masses(self,ptype,physical=True,internal=False,key=None,indx=()):
         '''get_masses:
         
         Wrapper for particle mass access, handles conversion to physical units 
@@ -164,28 +164,39 @@ class TNGCutout():
             ptype (str) - Particle type 
             physical (bool) - Output in physical units (Msun)
             internal (bool) - For internal use in the code, ignore astropy
+            indx (list) - List of indices to access, only works for indx of 
+                len < 2000. Defaults to all particles (empty list)
             
         Returns:
             masses (np.array) - Masses maybe in physical units (Msun), maybe 
                 astropy
         '''
+        ptype = util.ptype_to_str(ptype)
         if key is None:
             if ptype == 'PartType1':
                 masses = self._mass[1]*np.ones(self._npart[1])
+                if len(indx) > 0:
+                    masses = masses[indx]
             elif ptype == 'PartType3':
                 masses = self._mass[3]*np.ones(self._npart[3])
+                if len(indx) > 0:
+                    masses = masses[indx]
             else:
                 key = 'Masses'
         if key is not None: # Now includes else clause above
             with h5py.File(self.filename,'r') as f:
-                masses = np.asarray(f[ptype][key])
+                if len(indx) < _INDX_MAX_LEN:
+                    masses = np.asarray(f[ptype][key][indx])
+                else:
+                    masses = np.asarray(f[ptype][key])[indx]
         if physical:
             masses = util.mass_code_to_physical(masses,h=self.h,e10=True)
         if _ASTROPY and physical and not internal:
             masses *= apu.M_sun
         return masses
         
-    def get_coordinates(self,ptype,physical=True,internal=False,key=None):
+    def get_coordinates(self,ptype,physical=True,internal=False,key=None,
+        indx=()):
         '''get_coordinates:
         
         Wrapper for particle coordinate access, handles conversion to physical 
@@ -198,17 +209,23 @@ class TNGCutout():
             key (str) - Key to access in particle field. Defaults to 
                 'Coordinates' or 'CenterOfMass' to access particle positions, 
                 but could be changed to any positional quantity
+            indx (list) - List of indices to access, only works for indx of 
+                len < 2000. Defaults to all particles (empty list)
         
         Returns:
             coords (np.array) - coords maybe in physical units (kpc), maybe 
                 astropy
         '''
+        ptype = util.ptype_to_str(ptype)
         if ptype == 'PartType0' and key is None:
             key = 'CenterOfMass'
         elif key is None:
             key = 'Coordinates'
         with h5py.File(self.filename,'r') as f:
-            coords = np.asarray(f[ptype][key])
+            if len(indx) < _INDX_MAX_LEN:
+                coords = np.asarray(f[ptype][key][indx])
+            else:
+                coords = np.asarray(f[ptype][key])[indx]
         if self._cen_is_set:
             coords -= self._cen
         if self._rot_is_set:
@@ -219,7 +236,8 @@ class TNGCutout():
             coords *= apu.kpc
         return coords
     
-    def get_velocities(self,ptype,physical=True,internal=False,key=None):
+    def get_velocities(self,ptype,physical=True,internal=False,key=None,
+        indx=()):
         '''get_velocities:
         
         Wrapper for particle velocity access, handles conversion to physical 
@@ -232,14 +250,20 @@ class TNGCutout():
             key (str) - Key to access in particle field. Defaults to 
                 'Velocities' to access particle velocities, but could be 
                 changed to any velocity quantity
+            indx (list) - List of indices to access. Defaults to all particles
+                (empty list)
         
         Returns:
             vels (np.array) - coords in physical units (km/s), maybe astropy
         '''
+        ptype = util.ptype_to_str(ptype)
         if key is None:
             key = 'Velocities'
         with h5py.File(self.filename,'r') as f:
-            vels = np.asarray(f[ptype][key])
+            if len(indx) < _INDX_MAX_LEN:
+                vels = np.asarray(f[ptype][key][indx])
+            else:
+                vels = np.asarray(f[ptype][key])[indx]
         if self._vcen_is_set:
             vels -= self._vcen
         if self._rot_is_set:
@@ -250,7 +274,8 @@ class TNGCutout():
             vels *= (apu.km/apu.s)
         return vels
     
-    def get_potential_energy(self,ptype,physical=True,internal=False,key=None):
+    def get_potential_energy(self,ptype,physical=True,internal=False,key=None,
+        indx=()):
         '''get_potential_energy:
         
         Wrapper for particle potential energy access, handles conversion to 
@@ -263,17 +288,23 @@ class TNGCutout():
             key (str) - Key to access in particle field. Defaults to 
                 'Potential' to access particle potential energies, but could be 
                 changed to any energy quantity such as 'InternalEnergy' for gas
+            indx (list) - List of indices to access. Defaults to all particles
+                (empty list)
         
         Returns:
             pot (np.array) - potential energy in physical units (km/s)^2, 
                 maybe astropy
         '''
+        ptype = util.ptype_to_str(ptype)
         if not self._is_full_snapshot:
             raise ValueError('Potential energy is not available for mini snapshots')
         if key is None:
             key = 'Potential'
         with h5py.File(self.filename,'r') as f:
-            pot = np.asarray(f[ptype][key])
+            if len(indx) < _INDX_MAX_LEN:
+                pot = np.asarray(f[ptype][key][indx])
+            else:
+                pot = np.asarray(f[ptype][key])[indx]
         if physical:
             already_physical_key = ['InternalEnergy','InternalEnergyOld','BH_U']
             if key in already_physical_key:
@@ -284,7 +315,7 @@ class TNGCutout():
             pot *= (apu.km/apu.s)**2
         return pot
     
-    def get_angular_momentum(self,ptype,physical=True,internal=False):
+    def get_angular_momentum(self,ptype,physical=True,internal=False,indx=()):
         '''get_angular_momentum:
 
         Wrapper for particle angular momentum access, handles conversion to
@@ -294,16 +325,20 @@ class TNGCutout():
             ptype (str) - Particle type
             physical (bool) - Output in physical units, rather than code units
             internal (bool) - For internal use in the code, ignore astropy
+            indx (list) - List of indices to access. Defaults to all particles
+                (empty list)
         
         Returns:
             L (np.array) - angular momentum in physical units (kpc km/s),
                 maybe astropy
         '''
-        coords = self.get_coordinates(ptype,physical=physical,internal=internal)
-        vels = self.get_velocities(ptype,physical=physical,internal=internal)
+        coords = self.get_coordinates(ptype,physical=physical,internal=internal,
+            indx=indx)
+        vels = self.get_velocities(ptype,physical=physical,internal=internal,
+            indx=indx)
         return np.cross(coords,vels)
 
-    def get_J_Jz_Jp(self,ptype,physical=True,internal=False):
+    def get_J_Jz_Jp(self,ptype,physical=True,internal=False,indx=()):
         '''get_J_Jz_Jp:
         
         Get the angular momentum magnitude, z-component, and perpendicular
@@ -312,18 +347,21 @@ class TNGCutout():
             ptype (str) - Particle type
             physical (bool) - Output in physical units, rather than code units
             internal (bool) - For internal use in the code, ignore astropy
+            indx (list) - List of indices to access. Defaults to all particles
+                (empty list)
         
         Returns:
             J,Jz,Jp (np.array) - angular momentum magnitude, z-component, and 
                 perpendicular
         '''
-        L = self.get_angular_momentum(ptype,physical=physical,internal=internal)
+        L = self.get_angular_momentum(ptype,physical=physical,internal=internal,
+            indx=indx)
         J = np.linalg.norm(L,axis=1)
         Jz = L[:,2]
         Jp = np.sqrt(J**2-Jz**2)
         return J,Jz,Jp
 
-    def get_property(self,ptype,key,numpy_wrap=True):
+    def get_property(self,ptype,key,numpy_wrap=True,indx=()):
         '''get_property:
         
         Generic wrapper for getting any quantity for a given particle type.
@@ -333,19 +371,25 @@ class TNGCutout():
             ptype (str) - Particle type 
             key (str) - Key to access in particle field
             numpy_wrap (bool) - Cast output as a numpy array [default True]
+            indx (list) - List of indices to access. Defaults to all particles
+                (empty list)
             
         Returns:
             output (unknown) - Output property
         '''
+        ptype = util.ptype_to_str(ptype)
         if key not in self._ptype_fields[ptype]:
             raise ValueError('Key: '+key+' not available for particle type: '+ptype)
         with h5py.File(self.filename,'r') as f:
-            output = f[ptype][key]
-        if numpy_wrap:
-            output = np.asarray(output)
+            if len(indx) < _INDX_MAX_LEN:
+                output = f[ptype][key][indx]
+            else:
+                output = f[ptype][key][()][indx]
+            if numpy_wrap: # Any reason not to do this?
+                output = np.asarray(output)
         return output
     
-    def get_orbs(self,ptype,ro=8.,vo=220.):
+    def get_orbs(self,ptype,ro=8.,vo=220.,indx=()):
         '''get_orbs:
         
         Turn the particle positions and velocities into a galpy.orbit.Orbit
@@ -354,16 +398,22 @@ class TNGCutout():
         Args:
             ptype (str) - Particle type
             
+            indx (list) - List of indices to access. Defaults to all particles
+                (empty list)
+            
         Returns
             orbs (galpy.orbit.Orbit) - Orbit instance
         '''
         # Assume centered and rotated
         if not (self._cen_is_set and self._vcen_is_set and self._rot_is_set):
-            raise RuntimeError('Subhalo has not been centered and rotated')
+            raise RuntimeError('Subhalo has not been centered and rotated, '+
+                'run center_and_rectify()')
         
         # Make quantities for orbits
-        coords = self.get_coordinates(ptype,physical=True,internal=True)
-        vels = self.get_velocities(ptype,physical=True,internal=True)
+        coords = self.get_coordinates(ptype,physical=True,internal=True,
+            indx=indx)
+        vels = self.get_velocities(ptype,physical=True,internal=True,
+            indx=indx)
         
         R = np.sqrt(np.square(coords[:,0]) + np.square(coords[:,1]))
         z = coords[:,2]
