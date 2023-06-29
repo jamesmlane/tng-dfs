@@ -28,7 +28,7 @@ _ro,_vo = putil.parse_config_dict(_cdict,_keywords)
 
 def calculate_spherical_jeans_quantities(orbs,pot=None,pe=None,r_range=[0,100],
     n_bin=10,norm_by_galpy_scale_units=False,calculate_pe_with_pot=False,
-    t=None,ro=_ro,vo=_vo):
+    t=0.,ro=_ro,vo=_vo):
     '''calculate_spherical_jeans_quantities:
     
     Calculate the quantities used in the spherical Jeans equation.
@@ -65,7 +65,7 @@ def calculate_spherical_jeans_quantities(orbs,pot=None,pe=None,r_range=[0,100],
             "Must provide either a Potential or a potential energy array"
     else:
         pot = copy.deepcopy(pot)
-        pot.turn_physical_on(ro=ro,vo=vo)
+        potential.turn_physical_on(pot,ro=ro,vo=vo)
 
     # Handle orbits
     orbs = copy.deepcopy(orbs)
