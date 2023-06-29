@@ -14,6 +14,7 @@ __author__ = "James Lane"
 
 ### Imports
 import numpy as np
+import warnings
 import h5py
 import scipy.interpolate
 from galpy import orbit
@@ -27,8 +28,7 @@ from tng_dfs import util
 
 import pdb
 
-_full_snapshot_numbers = [2,3,4,6,8,11,13,17,21,25,33,40,50,59,67,72,78,84,91,99]
-# _mini_snapshot_fields = {'':}
+_HUBBLE_PARAM = 0.6774 # Planck 2015 value
 
 # ----------------------------------------------------------------------------
 
@@ -59,7 +59,12 @@ class TNGCutout():
         if h:
             self.h = h
         else:
-            self.h = self.header['HubbleParam']
+            _h = self.header['HubbleParam']
+            if _h != _HUBBLE_PARAM:
+                warnings.warn('Hubble parameter in header is not 0.6774, '+
+                              'the Planck 2015 value. Using value in header: '+
+                              str(_h))
+            self.h = _h
         if z:
             self.z = z
         else:
