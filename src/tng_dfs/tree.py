@@ -773,6 +773,47 @@ class TreeInfo(object):
         if not os.path.isfile(fname):
             raise IOError('File '+fname+' does not exist')
         return fname
+    
+    def get_unique_particle_ids(self,ptype,data_dir=None,snapnum=None):
+        '''get_unique_particle_ids:
+
+        Get all the unique particle IDs for this subhalo across all snapshots.
+
+        Args:
+            ptype (str) - Particle type to get unique particle IDs for
+            data_dir (str) - Data directory path as per the config file
+            snapnum (int or np.array) - Specify the snapshot numbers to get 
+                unique particle IDs for. If None, get all snapshots.
+        
+        Returns:
+            unique_particle_ids (np.array) - Array of unique particle IDs
+        '''
+        if data_dir is None:
+            raise ValueError('Must currently provide data_dir')
+        if snapnum is None:
+            snapnum = self.snapnum
+        else:
+            snapnum = np.atleast_1d(snapnum)
+            assert np.all(np.in1d(snapnum,self.snapnum)), \
+                'snapnum must be in self.snapnum'
+        unique_particle_ids = np.array([],dtype=int)
+        for snap in snapnum:
+            # print(snap)
+            # Get the cutout file for this snapshot
+            fname = self.get_cutout_filename(data_dir,snap)
+            co = cutout.TNGCutout(fname)
+            # Get the unique particle IDs for this snapshot
+            try:
+                pid = co.get_property(ptype,'ParticleIDs').astype(int)
+                unique_particle_ids = np.unique(
+                    np.concatenate((unique_particle_ids,pid))
+                    )
+            except KeyError:
+                warnings.warn('No particle IDs found for snapshot '+str(snap))
+                pass
+            del co
+        return unique_particle_ids.astype(int)
+
 
 class TreePrimary(TreeInfo):
     '''TreePrimary:
