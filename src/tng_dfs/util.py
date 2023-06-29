@@ -565,6 +565,34 @@ def subhalo_list_to_recarray(subs):
     return subs_rec
 #def
 
+def ptype_to_indx(ptype):
+        '''ptype_to_ind: Query the standard relationship between named 
+        particle types and index of 6D array for some fields.'''
+        if str(ptype).lower() in ['parttype0','gas','cells']:
+            return 0
+        elif str(ptype).lower() in ['parttype1','dm','darkmatter']:
+            return 1
+        elif str(ptype).lower() in ['parttype2']:
+            return 2
+        elif str(ptype).lower() in ['parttype3','tracers','tracer']:
+            return 3
+        elif str(ptype).lower() in ['parttype4','star','stars','stellar',
+                                    'wind']:
+            return 4
+        elif str(ptype).lower() in ['parttype5','bh','bhs','blackhole',
+                                    'blackholes']:
+            return 5
+        else:
+            raise ValueError('ptype not understood')
+
+def ptype_to_str(ptype):
+    '''Lightweight wrapper to ptype_to_indx which returns the formal name of 
+    the particle type for querying HDF5 files.
+    '''
+    _strs = ['PartType0','PartType1','PartType2','PartType3','PartType4',
+             'PartType5']
+    return _strs[ptype_to_indx(ptype)]
+
 # ----------------------------------------------------------------------------
 
 # Misc. functions
