@@ -24,11 +24,101 @@ try:
     from astropy import units as apu
 except ImportError:
     _ASTROPY = False
-from tng_dfs import util
+from . import util
 
 import pdb
 
+_INDX_MAX_LEN = 2500 # Larger than this -> performance issues for h5py
 _HUBBLE_PARAM = 0.6774 # Planck 2015 value
+# These are the full snapshot numbers
+_FULL_SNAPSHOT_NUMBERS = [2,3,4,6,8,11,13,17,21,25,33,40,50,59,67,72,78,84,91,99]
+# These dicts are 1 if the field is available only for full snapshots, 0 
+# if available for both full and mini snapshots.
+_PARTTYPE0_FULL_SNAP_KEY_DICT = {'CenterOfMass':1,
+                                 'Coordinates':0,
+                                 'Density':0,
+                                 'ElectronAbundance':0,
+                                 'EnergyDissipation':1,
+                                 'GFM_AGNRadiation':1,
+                                 'GFM_CoolingRate':1,
+                                 'GFM_Metallicity':0,
+                                 'GFM_Metals':1,
+                                 'GFM_MetalsTagged':1,
+                                 'GFM_WindDMVelDisp':1,
+                                 'GFM_WindHostHaloMass':1,
+                                 'InternalEnergy':0,
+                                 'InternalEnergyOld':0,
+                                 'Machnumber':1,
+                                 'MagneticField':1,
+                                 'MagneticFieldDivergence':1,
+                                 'Masses':0,
+                                 'NeutralHydrogenAbundance':1,
+                                 'ParticleIDs':0,
+                                 'Potential':1,
+                                 'StarFormationRate':0,
+                                 'SubfindDMDensity':1,
+                                 'SubfindDensity':1,
+                                 'SubfindHsml':1,
+                                 'SubfindVelDisp':1,
+                                 'Velocities':0,
+                                 }
+_PARTTYPE1_FULL_SNAP_KEY_DICT = {'Coordinates':0,
+                                 'ParticleIDs':0,
+                                 'Potential':1,
+                                 'SubfindDMDensity':1,
+                                 'SubfindDensity':1,
+                                 'SubfindHsml':1,
+                                 'SubfindVelDisp':1,
+                                 'Velocities':0,
+                                 }
+_PARTTYPE3_FULL_SNAP_KEY_DICT = {'FluidQuantities':1,
+                                 'ParentID':0,
+                                 'TracerID':0,
+                                 }
+_PARTTYPE4_FULL_SNAP_KEY_DICT = {'BirthPos':1,
+                                 'BirthVel':1,
+                                 'Coordinates':0,
+                                 'GFM_InitialMass':0,
+                                 'GFM_Metallicity':0,
+                                 'GFM_Metals':1,
+                                 'GFM_MetalsTagged':1,
+                                 'GFM_StellarFormationTime':0,
+                                 'GFM_StellarPhotometrics':1,
+                                 'Masses':0,
+                                 'ParticleIDs':0,
+                                 'Potential':1,
+                                 'StellarHsml':0,
+                                 'SubfindDMDensity':1,
+                                 'SubfindDensity':1,
+                                 'SubfindHsml':1,
+                                 'SubfindVelDisp':1,
+                                 'Velocities':0,
+                                 }
+_PARTTYPE5_FULL_SNAP_KEY_DICT = {'BH_BPressure':0,
+                                 'BH_CumEgyInjection_QM':0,
+                                 'BH_CumEgyInjection_RM':0,
+                                 'BH_CumMassGrowth_QM':0,
+                                 'BH_CumMassGrowth_RM':0,
+                                 'BH_Density':0,
+                                 'BH_HostHaloMass':0,
+                                 'BH_Hsml':0,
+                                 'BH_Mass':0,
+                                 'BH_Mdot':0,
+                                 'BH_MdotBondi':0,
+                                 'BH_MdotEddington':0,
+                                 'BH_Pressure':0,
+                                 'BH_Progs':0,
+                                 'BH_U':0,
+                                 'Coordinates':0,
+                                 'Masses':0,
+                                 'ParticleIDs':0,
+                                 'Potential':0,
+                                 'SubfindDMDensity':1,
+                                 'SubfindDensity':1,
+                                 'SubfindHsml':1,
+                                 'SubfindVelDisp':1,
+                                 'Velocities':0,
+                                 }
 
 # ----------------------------------------------------------------------------
 
@@ -71,8 +161,10 @@ class TNGCutout():
             self.z = self.header['Redshift']
         self._mass = self.header['MassTable']
         self._npart = self.header['NumPart_ThisFile']
-        self._snapnum = self.header['SnapNum']
-        self._is_full_snapshot = self._snapnum in _full_snapshot_numbers
+        self._snapnum = self.header['SnapshotNumber']
+        self._is_full_snapshot = self._snapnum in _FULL_SNAPSHOT_NUMBERS
+        _ptypes = ['PartType'+str(i) for i in range(6)]
+        self._available_ptypes = [pt for i,pt in enumerate(_ptypes) if self._npart[i] > 0]
         
         self._ptype_fields = {}
         for cr in self.header['CutoutRequest'].split('+'):
