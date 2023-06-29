@@ -34,91 +34,12 @@ _HUBBLE_PARAM = 0.6774 # Planck 2015 value
 _FULL_SNAPSHOT_NUMBERS = [2,3,4,6,8,11,13,17,21,25,33,40,50,59,67,72,78,84,91,99]
 # These dicts are 1 if the field is available only for full snapshots, 0 
 # if available for both full and mini snapshots.
-_PARTTYPE0_FULL_SNAP_KEY_DICT = {'CenterOfMass':1,
-                                 'Coordinates':0,
-                                 'Density':0,
-                                 'ElectronAbundance':0,
-                                 'EnergyDissipation':1,
-                                 'GFM_AGNRadiation':1,
-                                 'GFM_CoolingRate':1,
-                                 'GFM_Metallicity':0,
-                                 'GFM_Metals':1,
-                                 'GFM_MetalsTagged':1,
-                                 'GFM_WindDMVelDisp':1,
-                                 'GFM_WindHostHaloMass':1,
-                                 'InternalEnergy':0,
-                                 'InternalEnergyOld':0,
-                                 'Machnumber':1,
-                                 'MagneticField':1,
-                                 'MagneticFieldDivergence':1,
-                                 'Masses':0,
-                                 'NeutralHydrogenAbundance':1,
-                                 'ParticleIDs':0,
-                                 'Potential':1,
-                                 'StarFormationRate':0,
-                                 'SubfindDMDensity':1,
-                                 'SubfindDensity':1,
-                                 'SubfindHsml':1,
-                                 'SubfindVelDisp':1,
-                                 'Velocities':0,
-                                 }
-_PARTTYPE1_FULL_SNAP_KEY_DICT = {'Coordinates':0,
-                                 'ParticleIDs':0,
-                                 'Potential':1,
-                                 'SubfindDMDensity':1,
-                                 'SubfindDensity':1,
-                                 'SubfindHsml':1,
-                                 'SubfindVelDisp':1,
-                                 'Velocities':0,
-                                 }
-_PARTTYPE3_FULL_SNAP_KEY_DICT = {'FluidQuantities':1,
-                                 'ParentID':0,
-                                 'TracerID':0,
-                                 }
-_PARTTYPE4_FULL_SNAP_KEY_DICT = {'BirthPos':1,
-                                 'BirthVel':1,
-                                 'Coordinates':0,
-                                 'GFM_InitialMass':0,
-                                 'GFM_Metallicity':0,
-                                 'GFM_Metals':1,
-                                 'GFM_MetalsTagged':1,
-                                 'GFM_StellarFormationTime':0,
-                                 'GFM_StellarPhotometrics':1,
-                                 'Masses':0,
-                                 'ParticleIDs':0,
-                                 'Potential':1,
-                                 'StellarHsml':0,
-                                 'SubfindDMDensity':1,
-                                 'SubfindDensity':1,
-                                 'SubfindHsml':1,
-                                 'SubfindVelDisp':1,
-                                 'Velocities':0,
-                                 }
-_PARTTYPE5_FULL_SNAP_KEY_DICT = {'BH_BPressure':0,
-                                 'BH_CumEgyInjection_QM':0,
-                                 'BH_CumEgyInjection_RM':0,
-                                 'BH_CumMassGrowth_QM':0,
-                                 'BH_CumMassGrowth_RM':0,
-                                 'BH_Density':0,
-                                 'BH_HostHaloMass':0,
-                                 'BH_Hsml':0,
-                                 'BH_Mass':0,
-                                 'BH_Mdot':0,
-                                 'BH_MdotBondi':0,
-                                 'BH_MdotEddington':0,
-                                 'BH_Pressure':0,
-                                 'BH_Progs':0,
-                                 'BH_U':0,
-                                 'Coordinates':0,
-                                 'Masses':0,
-                                 'ParticleIDs':0,
-                                 'Potential':0,
-                                 'SubfindDMDensity':1,
-                                 'SubfindDensity':1,
-                                 'SubfindHsml':1,
-                                 'SubfindVelDisp':1,
-                                 'Velocities':0,
-                                 }
+_PARTTYPE_FULL_SNAP_KEY_DICT = {'PartType0': {'CenterOfMass':1,'Coordinates':0,'Density':0,'ElectronAbundance':0,'EnergyDissipation':1,'GFM_AGNRadiation':1,'GFM_CoolingRate':1,'GFM_Metallicity':0,'GFM_Metals':1,'GFM_MetalsTagged':1,'GFM_WindDMVelDisp':1,'GFM_WindHostHaloMass':1,'InternalEnergy':0,'InternalEnergyOld':0,'Machnumber':1,'MagneticField':1,'MagneticFieldDivergence':1,'Masses':0,'NeutralHydrogenAbundance':1,'ParticleIDs':0,'Potential':1,'StarFormationRate':0,'SubfindDMDensity':1,'SubfindDensity':1,'SubfindHsml':1,'SubfindVelDisp':1,'Velocities':0,},
+                                'PartType1': {'Coordinates':0,'ParticleIDs':0,'Potential':1,'SubfindDMDensity':1,'SubfindDensity':1,'SubfindHsml':1,'SubfindVelDisp':1,'Velocities':0,},
+                                'PartType3': {'FluidQuantities':1,'ParentID':0,'TracerID':0,},
+                                'PartType4': {'BirthPos':1,'BirthVel':1,'Coordinates':0,'GFM_InitialMass':0,'GFM_Metallicity':0,'GFM_Metals':1,'GFM_MetalsTagged':1,'GFM_StellarFormationTime':0,'GFM_StellarPhotometrics':1,'Masses':0,'ParticleIDs':0,'Potential':1,'StellarHsml':0,'SubfindDMDensity':1,'SubfindDensity':1,'SubfindHsml':1,'SubfindVelDisp':1,'Velocities':0,},
+                                'PartType5': {'BH_BPressure':0,'BH_CumEgyInjection_QM':0,'BH_CumEgyInjection_RM':0,'BH_CumMassGrowth_QM':0,'BH_CumMassGrowth_RM':0,'BH_Density':0,'BH_HostHaloMass':0,'BH_Hsml':0,'BH_Mass':0,'BH_Mdot':0,'BH_MdotBondi':0,'BH_MdotEddington':0,'BH_Pressure':0,'BH_Progs':0,'BH_U':0,'Coordinates':0,'Masses':0,'ParticleIDs':0,'Potential':0,'SubfindDMDensity':1,'SubfindDensity':1,'SubfindHsml':1,'SubfindVelDisp':1,'Velocities':0,},
+                                }
 
 # ----------------------------------------------------------------------------
 
@@ -261,6 +182,8 @@ class TNGCutout():
             ptype (str) - Particle type 
             physical (bool) - Output in physical units (Msun)
             internal (bool) - For internal use in the code, ignore astropy
+                units
+            key (str) - Key to access, if None, will return default masses
             indx (list) - List of indices to access, only works for indx of 
                 len < 2000. Defaults to all particles (empty list)
             
@@ -281,6 +204,7 @@ class TNGCutout():
             else:
                 key = 'Masses'
         if key is not None: # Now includes else clause above
+            self._check_valid_key(ptype,key)
             with h5py.File(self.filename,'r') as f:
                 if len(indx) < _INDX_MAX_LEN:
                     masses = np.asarray(f[ptype][key][indx])
@@ -304,8 +228,8 @@ class TNGCutout():
             physical (bool) - Output in physical units, rather than code units
             internal (bool) - For internal use in the code, ignore astropy
             key (str) - Key to access in particle field. Defaults to 
-                'Coordinates' or 'CenterOfMass' to access particle positions, 
-                but could be changed to any positional quantity
+                'Coordinates' to access particle positions, but could be 
+                changed to any positional quantity
             indx (list) - List of indices to access, only works for indx of 
                 len < 2000. Defaults to all particles (empty list)
         
@@ -314,10 +238,9 @@ class TNGCutout():
                 astropy
         '''
         ptype = util.ptype_to_str(ptype)
-        if ptype == 'PartType0' and key is None:
-            key = 'CenterOfMass'
-        elif key is None:
+        if key is None:
             key = 'Coordinates'
+        self._check_valid_key(ptype,key)
         with h5py.File(self.filename,'r') as f:
             if len(indx) < _INDX_MAX_LEN:
                 coords = np.asarray(f[ptype][key][indx])
@@ -356,6 +279,7 @@ class TNGCutout():
         ptype = util.ptype_to_str(ptype)
         if key is None:
             key = 'Velocities'
+        self._check_valid_key(ptype,key)
         with h5py.File(self.filename,'r') as f:
             if len(indx) < _INDX_MAX_LEN:
                 vels = np.asarray(f[ptype][key][indx])
@@ -397,6 +321,7 @@ class TNGCutout():
             raise ValueError('Potential energy is not available for mini snapshots')
         if key is None:
             key = 'Potential'
+        self._check_valid_key(ptype,key)
         with h5py.File(self.filename,'r') as f:
             if len(indx) < _INDX_MAX_LEN:
                 pot = np.asarray(f[ptype][key][indx])
@@ -475,8 +400,7 @@ class TNGCutout():
             output (unknown) - Output property
         '''
         ptype = util.ptype_to_str(ptype)
-        if key not in self._ptype_fields[ptype]:
-            raise ValueError('Key: '+key+' not available for particle type: '+ptype)
+        self._check_valid_key(ptype,key)
         with h5py.File(self.filename,'r') as f:
             if len(indx) < _INDX_MAX_LEN:
                 output = f[ptype][key][indx]
@@ -855,3 +779,33 @@ class TNGCutout():
         if _ASTROPY and physical and not internal:
             Jcirc *= (apu.kpc*apu.km/apu.s)
         return Jcirc
+
+    ### Utilities ###
+
+    def _check_valid_key(self,ptype,key):
+        '''_check_valid_key:
+
+        Check that an HDF5 key is valid for a given particle type and snapshot.
+
+        Args:
+            ptype (str) - Particle type
+            key (str) - HDF5 key
+
+        Returns:
+            None
+        
+        Raises:
+            ValueError - If keyword is not valid or key is not available for 
+                snapshot type
+        '''
+        # First convert ptype to proper string
+        ptype = util.ptype_to_str(ptype)
+        if key not in _PARTTYPE_FULL_SNAP_KEY_DICT[ptype].keys():
+            raise ValueError('Invalid key: {} for particle type: {}'.format(
+                key,ptype))
+        if self.snapnum not in _FULL_SNAPSHOT_NUMBERS and \
+            _PARTTYPE_FULL_SNAP_KEY_DICT[ptype][key] == 1:
+            raise ValueError('Invalid key: {} for mini snapshot: {}'.format(
+                key,self.snapnum))
+        return None
+
