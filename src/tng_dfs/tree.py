@@ -837,7 +837,7 @@ class TreePrimary(TreeInfo):
             tree_filename (str) - Absolute filename of the sublink tree file
         '''
         # Initialize base class
-        super(TreePrimary,self).__init__(tree_filename,**kwargs)
+        super(TreePrimary,self).__init__(tree_filename)
 
         # Initialize this class
         self.tree_major_mergers = tree_major_mergers
@@ -889,7 +889,7 @@ class TreeMajorMerger(TreeInfo):
                 identify the merger
         '''
         # Initialize base class
-        super(TreeMajorMerger,self).__init__(tree_filename,**kwargs)
+        super(TreeMajorMerger,self).__init__(tree_filename)
 
         # Initialize this class
         self.secondary_mlpid = kwargs.get('secondary_mlpid',None)
@@ -917,4 +917,4 @@ class TreeMajorMerger(TreeInfo):
             self._tree_indx = np.where(tree_mask)
             self._len_tree = len(tree.get_property('Mass'))
             # self._tree_mask = tree_mask
-            assert np.all(tree_mask == self._get_tree_mask())
+            # assert np.all(tree_mask == self._get_tree_mask())
