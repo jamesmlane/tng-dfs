@@ -148,7 +148,8 @@ def calculate_spherical_jeans_quantities(orbs,pot=None,pe=None,r_range=[0,100],
 
 def calculate_spherical_jeans(orbs,pot,r_range=[0,100],n_bin=10,
     norm_by_galpy_scale_units=False,norm_by_nuvr2_r=True,
-    calculate_pe_with_pot=False,return_kinematics=True,t=0.,ro=_ro,vo=_vo):
+    calculate_pe_with_pot=False,return_kinematics=True,return_terms=False,
+    t=0.,ro=_ro,vo=_vo):
     '''calculate_spherical_jeans:
 
     Calculate the spherical Jeans equation for a given kinematic sample
@@ -171,6 +172,8 @@ def calculate_spherical_jeans(orbs,pot,r_range=[0,100],n_bin=10,
             orbs in the bin [default: False]
         return_kinematics (optional, bool) - If True, return the kinematics
             used to calculate the Jeans equation [default: True]
+        return_terms (optional, bool) - If True, return the individual terms
+            of the Jeans equation [default: False]
         t (optional, float) - Time at which to calculate the Jeans equation,
             used as an argument to the potential [default: None]
         ro (optional, float) - Distance scale in kpc [default: 8.275]
@@ -191,17 +194,27 @@ def calculate_spherical_jeans(orbs,pot,r_range=[0,100],n_bin=10,
     dnuvr2dr,dphidr,nu,vr2,vp2,vt2,rs = qs
 
     # Compute the Jeans equation
-    J = nu*(dphidr + (2*vr2-vp2-vt2)/rs) + dnuvr2dr
+    J1 = copy.deepcopy(dnuvr2dr)
+    J2 = nu*(dphidr + (2*vr2-vp2-vt2)/rs) 
+    J = J1 + J2
 
     # Normalize by nu*vr^2/r if desired. Note that this returns the same 
     # answer regardless of whether using physical or galpy units.
     if norm_by_nuvr2_r and not norm_by_galpy_scale_units:
+        J1 = J1/(nu*vr2/rs)
+        J2 = J2/(nu*vr2/rs)
         J = J/(nu*vr2/rs)
 
     if return_kinematics:
-        return J,rs,qs
+        if return_terms:
+            return J,rs,qs,J1,J2
+        else:
+            return J,rs,qs
     else:
-        return J,rs
+        if return_terms:
+            return J,rs,J1,J2
+        else:
+            return J,rs
     
 def calculate_weighted_average_J(J,rs,dens=None,qs=None,weights=None):
     '''calculate_weighted_average_J:
