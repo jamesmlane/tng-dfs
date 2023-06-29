@@ -540,31 +540,11 @@ class SublinkTree():
             assert key in f.keys(), 'Key not found in hdf5 file'
             output = f[key]
             if ptype is not None:
-                indx = self._ptype_to_indx(ptype)
+                indx = util.ptype_to_indx(ptype)
                 output = output[:,indx]
             if numpy_wrap:
                 output = np.asarray(output)
         return output
-
-    def _ptype_to_indx(self,ptype):
-        '''_ptype_to_ind: Query the standard relationship between named 
-        particle types and index of 6D array for some fields.'''
-        if str(ptype).lower() in ['parttype0','gas','cells']:
-            return 0
-        elif str(ptype).lower() in ['parttype1','dm','darkmatter']:
-            return 1
-        elif str(ptype).lower() in ['parttype2']:
-            return 2
-        elif str(ptype).lower() in ['parttype3','tracers','tracer']:
-            return 3
-        elif str(ptype).lower() in ['parttype4','star','stars','stellar',
-                                    'wind']:
-            return 4
-        elif str(ptype).lower() in ['parttype5','bh','bhs','blackhole',
-                                    'blackholes']:
-            return 5
-        else:
-            raise ValueError('ptype not understood')
 
 def _find_mapping_secondary_to_main_branch(main_branch_snap,
         secondary_branch_snap,_check=False):
