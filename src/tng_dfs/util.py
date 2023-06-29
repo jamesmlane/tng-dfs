@@ -130,6 +130,16 @@ def parse_config_dict(cdict,keyword):
                 _value.append( cdict[key] )
             else:
                 return cdict[key]
+        # Lists
+        elif key in ['MW_MASS_RANGE']:
+            if _islist:
+                _arr = cdict[key].strip('][').split(',')
+                _arr = [float(x) for x in _arr]
+                _value.append( _arr )
+            else:
+                _arr = cdict[key].strip('][').split(',')
+                _arr = [float(x) for x in _arr]
+                return _arr
         # No code, just pass value
         else:
             print('Warning: keyword '+key+' has no parsing code,'+
