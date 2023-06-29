@@ -760,14 +760,16 @@ class TreeInfo(object):
                 have subfind_id/snapnum loaded as attributes from the tree file
             IOError: If the cutout file does not exist
         '''
-        if subfind_id is None and hasattr(self,'subfind_id') and hasattr(self,'snapnum'):
-            subfind_id = self.subfind_id[self.snapnum==snapnum][0]
-        else:
-            raise ValueError('Must provide either subfind_id or have '
-                'subfind_id/snapnum loaded as attributes from the tree file '
-                '(provide tree_filename)')
-        snap_path = data_dir+'/cutouts/snap_'+str(snapnum)+'/'
-        fname = snap_path+'_subfind_'+str(subfind_id)+'.hdf5'
+        if data_dir[-1] != '/': data_dir += '/'
+        if subfind_id is None:
+            if hasattr(self,'subfind_id') and hasattr(self,'snapnum'):
+                subfind_id = self.subfind_id[self.snapnum==snapnum][0]
+            else:
+                raise ValueError('Must provide either subfind_id or have '
+                    'subfind_id/snapnum loaded as attributes from the tree '
+                    'file (provide tree_filename)')
+        snap_path = data_dir+'cutouts/snap_'+str(snapnum)+'/'
+        fname = snap_path+'cutout_'+str(subfind_id)+'.hdf5'
         if not os.path.isfile(fname):
             raise IOError('File '+fname+' does not exist')
         return fname
