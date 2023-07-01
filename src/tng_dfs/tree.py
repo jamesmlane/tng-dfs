@@ -743,14 +743,14 @@ class TreeInfo(object):
         '''
         return SublinkTree(self.tree_filename)
 
-    def get_cutout_filename(self,data_dir,snapnum,subfind_id=None):
+    def get_cutout_filename(self,mw_analog_dir,snapnum,subfind_id=None):
         '''get_cutout_filename:
         
         Using either the snapshot number or the subfind ID, get the filename
         of the cutout file for this primary subhalo.
 
         Args:
-            data_dir (str) - Data directory path as per the config file
+            mw_analog_dir (str) - MW analog directory as per the config file
             snapnum (int) - Snapshot number of the cutout file, optional
             subfind_id (int) - Subfind ID of the cutout file, optional
         
@@ -762,7 +762,7 @@ class TreeInfo(object):
                 have subfind_id/snapnum loaded as attributes from the tree file
             IOError: If the cutout file does not exist
         '''
-        if data_dir[-1] != '/': data_dir += '/'
+        if mw_analog_dir[-1] != '/': mw_analog_dir += '/'
         if subfind_id is None:
             if hasattr(self,'subfind_id') and hasattr(self,'snapnum'):
                 subfind_id = self.subfind_id[self.snapnum==snapnum][0]
@@ -770,13 +770,14 @@ class TreeInfo(object):
                 raise ValueError('Must provide either subfind_id or have '
                     'subfind_id/snapnum loaded as attributes from the tree '
                     'file (provide tree_filename)')
-        snap_path = data_dir+'cutouts/snap_'+str(snapnum)+'/'
+        snap_path = mw_analog_dir+'cutouts/snap_'+str(snapnum)+'/'
         fname = snap_path+'cutout_'+str(subfind_id)+'.hdf5'
         if not os.path.isfile(fname):
             raise IOError('File '+fname+' does not exist')
         return fname
     
-    def get_unique_particle_ids(self,ptype,data_dir=None,snapnum=None):
+    def get_unique_particle_ids(self,ptype,mw_analog_dir=None,data_dir=None,
+        snapnum=None):
         '''get_unique_particle_ids:
 
         Get all the unique particle IDs for this subhalo across all snapshots.
@@ -790,8 +791,12 @@ class TreeInfo(object):
         Returns:
             unique_particle_ids (np.array) - Array of unique particle IDs
         '''
-        if data_dir is None:
-            raise ValueError('Must currently provide data_dir')
+        if mw_analog_dir is None:
+            if data_dir is None:
+                raise ValueError('Must currently provide mw_analog_dir or'
+                                 ' data_dir')
+            else:
+                mw_analog_dir = data_dir+'mw_analogs/'
         if snapnum is None:
             snapnum = self.snapnum
         else:
@@ -802,7 +807,7 @@ class TreeInfo(object):
         for snap in snapnum:
             # print(snap)
             # Get the cutout file for this snapshot
-            fname = self.get_cutout_filename(data_dir,snap)
+            fname = self.get_cutout_filename(mw_analog_dir,snap)
             co = cutout.TNGCutout(fname)
             # Get the unique particle IDs for this snapshot
             try:
