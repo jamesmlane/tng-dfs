@@ -22,6 +22,7 @@ from astropy import units as apu
 import scipy.stats
 
 from . import util as putil
+from . import kinematics as pkin
 
 # ----------------------------------------------------------------------------
 
