@@ -80,10 +80,10 @@ class TNGCutout():
             self.z = z
         else:
             self.z = self.header['Redshift']
-        self._mass = self.header['MassTable']
+        self.snapnum = self.header['SnapshotNumber']
+        self._mass_table = self.header['MassTable']
         self._npart = self.header['NumPart_ThisFile']
-        self._snapnum = self.header['SnapshotNumber']
-        self._is_full_snapshot = self._snapnum in _FULL_SNAPSHOT_NUMBERS
+        self._is_full_snapshot = self.snapnum in _FULL_SNAPSHOT_NUMBERS
         _ptypes = ['PartType'+str(i) for i in range(6)]
         self._available_ptypes = [pt for i,pt in enumerate(_ptypes) if self._npart[i] > 0]
         
@@ -207,11 +207,11 @@ class TNGCutout():
         ptype = util.ptype_to_str(ptype)
         if key is None:
             if ptype == 'PartType1':
-                masses = self._mass[1]*np.ones(self._npart[1])
+                masses = self._mass_table[1]*np.ones(self._npart[1])
                 if len(indx) > 0:
                     masses = masses[indx]
             elif ptype == 'PartType3':
-                masses = self._mass[3]*np.ones(self._npart[3])
+                masses = self._mass_table[3]*np.ones(self._npart[3])
                 if len(indx) > 0:
                     masses = masses[indx]
             else:
@@ -579,6 +579,9 @@ class TNGCutout():
         # Find mass-weighted average velocity within radial bounds
         rs = np.sqrt(np.sum(np.square(coords),axis=1))
         vcen_mask = (rs > rmin) & (rs < rmax)
+        if np.sum(vcen_mask) == 0:
+            raise ValueError('No particles between rmin and rmax for '
+                'determining velocity center')
         self._vcen_mask = vcen_mask
         vcen = np.average(vels[vcen_mask,:], axis=0, weights=masses[vcen_mask])
         return vcen
