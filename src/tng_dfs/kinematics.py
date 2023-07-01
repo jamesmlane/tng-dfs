@@ -151,7 +151,7 @@ def calculate_spherical_jeans_quantities(orbs,pot=None,pe=None,r_range=[0,100],
 
     return dnuvr2dr,dphidr,nu,vr2,vp2,vt2,bin_cents
 
-def calculate_spherical_jeans(orbs,pot,r_range=[0,100],n_bin=10,
+def calculate_spherical_jeans(orbs,pot=None,pe=None,r_range=[0,100],n_bin=10,
     norm_by_galpy_scale_units=False,norm_by_nuvr2_r=True,
     calculate_pe_with_pot=False,return_kinematics=True,return_terms=False,
     t=0.,ro=_ro,vo=_vo):
@@ -161,8 +161,10 @@ def calculate_spherical_jeans(orbs,pot,r_range=[0,100],n_bin=10,
 
     Args:
         orbs (Orbits) - Orbits object containing particles / kinematic sample
-        pot (Potential) - Potential object representing the gravitational 
-            potential experienced by orbs
+        pot (optional, Potential) - Potential object representing the 
+            gravitational potential experienced by orbs
+        pe (optional, array) - Potential energy of each particle in orbs in
+            units of km^2/s^2 [default: None]
         r_range (optional, list) - Range of radii to consider, in kpc 
             [default: [0,100]]
         n_bin (optional, int) - Number of bins to use in calculating Jeans
@@ -192,7 +194,7 @@ def calculate_spherical_jeans(orbs,pot,r_range=[0,100],n_bin=10,
             in order: dnuvr2dr,dphidr,nu,vr2,vp2,vt2,rs
     '''
     # Compute the 
-    qs = calculate_spherical_jeans_quantities(orbs,pot,r_range=r_range,
+    qs = calculate_spherical_jeans_quantities(orbs,pot=pot,pe=pe,r_range=r_range,
         n_bin=n_bin,norm_by_galpy_scale_units=norm_by_galpy_scale_units,
         calculate_pe_with_pot=calculate_pe_with_pot,t=t,ro=ro,vo=vo)
 
