@@ -66,6 +66,9 @@ def calculate_spherical_jeans_quantities(orbs,pot=None,pe=None,r_range=[0,100],
     else:
         pot = copy.deepcopy(pot)
         potential.turn_physical_on(pot,ro=ro,vo=vo)
+    if calculate_pe_with_pot:
+        assert pot is not None,\
+            "Must provide a Potential if calculating potential from pot"
 
     # Handle orbits
     orbs = copy.deepcopy(orbs)
@@ -95,11 +98,13 @@ def calculate_spherical_jeans_quantities(orbs,pot=None,pe=None,r_range=[0,100],
 
     # Handle potential energy
     rs = orbs.r(use_physical=True).to(apu.kpc).value
+    if isinstance(pe,apu.Quantity):
+        pe = pe.to(apu.km**2/apu.s**2).value
     if pot is not None:
         pe = potential.evaluatePotentials(pot,orbs.R(),orbs.z(),t=t,
             use_physical=True).to(apu.km**2/apu.s**2).value
-    pe_bin_cents = potential.evaluatePotentials(pot,dr_bin_cents*apu.kpc,
-        0*apu.kpc,t=t,use_physical=True).to(apu.km**2/apu.s**2).value
+        pe_bin_cents = potential.evaluatePotentials(pot,dr_bin_cents*apu.kpc,
+            0*apu.kpc,t=t,use_physical=True).to(apu.km**2/apu.s**2).value
 
     # Derivative quantities
     for i in range(len(dr_bin_cents)):
