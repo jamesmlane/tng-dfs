@@ -139,38 +139,51 @@ class TNGCutout():
             None, but sets self._cen, self._vcen, and self._rot
         '''    
         # Determine primary subhalo position offset
-        cen_coords = self.get_coordinates(cen_ptype, physical=False, 
-                                          internal=True)
-        cen_masses = self.get_masses(cen_ptype, physical=False, 
-                                     internal=True)
-        self._cen = self.find_position_center(cen_coords, cen_masses, 
-            scheme=cen_scheme, **kwargs)
-        self._cen_ptype = cen_ptype
-        self._cen_is_set = True
+        if self._cen_is_set:
+            warnings.warn('Centering has already been performed. '
+                          'Not centering again.')
+        else:
+            cen_coords = self.get_coordinates(cen_ptype, physical=False, 
+                                            internal=True)
+            cen_masses = self.get_masses(cen_ptype, physical=False, 
+                                        internal=True)
+            self._cen = self.find_position_center(cen_coords, cen_masses, 
+                scheme=cen_scheme, **kwargs)
+            self._cen_ptype = cen_ptype
+            self._cen_is_set = True
                                           
         # Determine primary subhalo velocity offset
-        vcen_coords = self.get_coordinates(vcen_ptype, physical=False, 
-                                          internal=True)
-        vcen_vels = self.get_velocities(vcen_ptype, physical=False, 
+        if self._vcen_is_set:
+            warnings.warn('Velocity centering has already been performed. '
+                          'Not centering again')
+        else:
+            vcen_coords = self.get_coordinates(vcen_ptype, physical=False, 
+                                            internal=True)
+            vcen_vels = self.get_velocities(vcen_ptype, physical=False, 
+                                            internal=True)
+            vcen_masses = self.get_masses(vcen_ptype, physical=False, 
                                         internal=True)
-        vcen_masses = self.get_masses(vcen_ptype, physical=False, 
-                                      internal=True)
-        self._vcen = self.find_velocity_center(vcen_coords, vcen_vels, 
-            vcen_masses, scheme=vcen_scheme, **kwargs)
-        self._vcen_ptype = vcen_ptype
-        self._vcen_is_set = True
+            self._vcen = self.find_velocity_center(vcen_coords, vcen_vels, 
+                vcen_masses, scheme=vcen_scheme, **kwargs)
+            self._vcen_ptype = vcen_ptype
+            self._vcen_is_set = True
         
         # Determine rotation matrix
-        rot_coords = self.get_coordinates(rot_ptype, physical=False, 
-                                          internal=True)
-        rot_vels = self.get_velocities(rot_ptype, physical=False, 
+        if self._rot_is_set:
+            warnings.warn('Rotation has already been performed. '
+                          'Not rotating again.')
+        else:
+            rot_coords = self.get_coordinates(rot_ptype, physical=False, 
+                                            internal=True)
+            rot_vels = self.get_velocities(rot_ptype, physical=False, 
+                                            internal=True)
+            rot_masses = self.get_masses(rot_ptype, physical=False, 
                                         internal=True)
-        rot_masses = self.get_masses(rot_ptype, physical=False, 
-                                      internal=True)
-        self._rot = self.find_rotation_matrix(rot_coords, rot_vels, rot_masses, 
-            scheme=rot_scheme, **kwargs)
-        self._rot_ptype = rot_ptype
-        self._rot_is_set = True
+            self._rot = self.find_rotation_matrix(rot_coords, rot_vels, rot_masses, 
+                scheme=rot_scheme, **kwargs)
+            self._rot_ptype = rot_ptype
+            self._rot_is_set = True
+        return None
 
     def get_masses(self,ptype,physical=True,internal=False,key=None,indx=()):
         '''get_masses:
