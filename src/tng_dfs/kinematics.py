@@ -260,3 +260,37 @@ def calculate_weighted_average_J(J,rs,dens=None,qs=None,weights=None):
     J_dispersion = np.sqrt(np.average((J-J_avg)**2,weights=weights))
     
     return J_avg,J_dispersion
+
+def beta_any_alpha_cuddeford91(r,ra=1.,alpha=0.,beta=None):
+    '''beta_any_alpha:
+
+    Calculate beta as a function of radius for any central alpha (2*beta).
+
+    Equation 38 from Cuddeford (1991)
+
+    Args:
+        r (float or array): Radius
+        ra (float): Scale radius
+        alpha (float): Twice the central anisotropy parameter, default 0
+        beta (optional, float): The anisotropy parameter at 
+
+    Returns:
+        beta (float or array): Anisotropy
+    '''
+    if beta is not None:
+        alpha = 2*beta
+    return (r**2-alpha*ra**2)/(r**2+ra**2)
+
+def beta_ossipkov_merrit(r,ra=1.):
+    '''beta_ossipkov_merrit:
+
+    Calculate beta as a function of radius for the Ossipkov-Merrit DF
+
+    Args:
+        r (float or array): Radius
+        ra (float): Scale radius
+
+    Returns:
+        beta (float or array): Anisotropy parameter
+    '''
+    return (r**2)/(r**2+ra**2)
