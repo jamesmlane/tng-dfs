@@ -151,10 +151,10 @@ def calculate_spherical_jeans_quantities(orbs,pot=None,pe=None,r_range=[0,100],
 
     return dnuvr2dr,dphidr,nu,vr2,vp2,vt2,bin_cents
 
-def calculate_spherical_jeans(orbs,pot=None,pe=None,r_range=[0,100],n_bin=10,
-    norm_by_galpy_scale_units=False,norm_by_nuvr2_r=True,
-    calculate_pe_with_pot=False,return_kinematics=True,return_terms=False,
-    t=0.,ro=_ro,vo=_vo):
+def calculate_spherical_jeans(orbs,pot=None,pe=None,n_bootstrap=1,
+    r_range=[0,100],n_bin=10,norm_by_galpy_scale_units=False,
+    norm_by_nuvr2_r=True,calculate_pe_with_pot=False,return_kinematics=True,
+    return_terms=False,t=0.,ro=_ro,vo=_vo):
     '''calculate_spherical_jeans:
 
     Calculate the spherical Jeans equation for a given kinematic sample
@@ -165,6 +165,8 @@ def calculate_spherical_jeans(orbs,pot=None,pe=None,r_range=[0,100],n_bin=10,
             gravitational potential experienced by orbs
         pe (optional, array) - Potential energy of each particle in orbs in
             units of km^2/s^2 [default: None]
+        n_bootstrap (optional, int) - Number of bootstrap samples to calculate 
+            the Jeans equation for, if 1, then don't bootstrap [default: 1]
         r_range (optional, list) - Range of radii to consider, in kpc 
             [default: [0,100]]
         n_bin (optional, int) - Number of bins to use in calculating Jeans
@@ -193,10 +195,26 @@ def calculate_spherical_jeans(orbs,pot=None,pe=None,r_range=[0,100],n_bin=10,
             equation, output from calculate_spherical_jeans_quantities, 
             in order: dnuvr2dr,dphidr,nu,vr2,vp2,vt2,rs
     '''
-    # Compute the 
-    qs = calculate_spherical_jeans_quantities(orbs,pot=pot,pe=pe,r_range=r_range,
-        n_bin=n_bin,norm_by_galpy_scale_units=norm_by_galpy_scale_units,
-        calculate_pe_with_pot=calculate_pe_with_pot,t=t,ro=ro,vo=vo)
+    # Compute the quantities for the spherical Jeans equation
+    if n_bootstrap>1:
+        qs = np.zeros((7,n_bootstrap,n_bin))
+        for i in range(n_bootstrap):
+            # Random bootstrap index
+            indx = np.random.choice(np.arange(len(orbs),dtype=int),
+                size=len(orbs)-1,replace=False)
+            if pe is not None:
+                _pe = pe[indx]
+            else:
+                _pe = None
+            _qs = calculate_spherical_jeans_quantities(orbs[indx],pot=pot,
+                pe=_pe,n_bootstrap=1,r_range=r_range,n_bin=n_bin,
+                norm_by_galpy_scale_units=norm_by_galpy_scale_units,
+                calculate_pe_with_pot=calculate_pe_with_pot,t=t,ro=ro,vo=vo)
+            qs[:,i,:] = _qs
+    else:
+        qs = calculate_spherical_jeans_quantities(orbs,pot=pot,pe=pe,r_range=r_range,
+            n_bin=n_bin,norm_by_galpy_scale_units=norm_by_galpy_scale_units,
+            calculate_pe_with_pot=calculate_pe_with_pot,t=t,ro=ro,vo=vo)
 
     dnuvr2dr,dphidr,nu,vr2,vp2,vt2,rs = qs
 
