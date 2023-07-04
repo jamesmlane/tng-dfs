@@ -201,13 +201,13 @@ def calculate_spherical_jeans(orbs,pot=None,pe=None,n_bootstrap=1,
         for i in range(n_bootstrap):
             # Random bootstrap index
             indx = np.random.choice(np.arange(len(orbs),dtype=int),
-                size=len(orbs)-1,replace=False)
+                size=len(orbs)-1,replace=True)
             if pe is not None:
                 _pe = pe[indx]
             else:
                 _pe = None
             _qs = calculate_spherical_jeans_quantities(orbs[indx],pot=pot,
-                pe=_pe,n_bootstrap=1,r_range=r_range,n_bin=n_bin,
+                pe=_pe,r_range=r_range,n_bin=n_bin,
                 norm_by_galpy_scale_units=norm_by_galpy_scale_units,
                 calculate_pe_with_pot=calculate_pe_with_pot,t=t,ro=ro,vo=vo)
             qs[:,i,:] = _qs
