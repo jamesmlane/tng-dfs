@@ -103,87 +103,8 @@ class TNGCutout():
         self._rot_ptype = None
         self._rot_mask = None
         self._E_Jcirc_spline = None
-            
-    def center_and_rectify(self,cen_ptype='PartType4', vcen_ptype='PartType4', 
-        rot_ptype='PartType0', cen_scheme='ssc', vcen_scheme='bounded_vcom',
-        rot_scheme='bounded_L', **kwargs):
-        '''center_and_rectify:
-        
-        Center the simulation on the primary subhalo and rectify the coordinates 
-        such that the disk of the galaxy lies in the XY plane.
-        
-        Schemes to determine position offset:
-            'ssc' - Shrinking-spherical-center algorithm of Power+ 2003
-        
-        Schemes to determine velocity offset:
-            'bounded_com' - Rotate radius-bounded mass-weighted velocity mean
-        
-        Schemes to determine rotation:
-            'bounded_L' - Rotate to radius-bounded angular momentum
-        
-        Args:
-            cen_ptype (str) - Type of particles to use to calculate the 
-                position offset of the primary [default PartType4 (star)]
-            vcen_ptype (str) - Type of particles to use to calculate the 
-                velocity offset of the primary [default PartType4 (gas)]
-            rot_ptype (str) - Type of particles to use to calculate the 
-                rotation matrix of the primary [default PartType0 (gas)]
-            cen_scheme (str) - Scheme to calculate position of primary subhalo
-                [default 'ssc']
-            vcen_scheme (str) - Scheme to calculate velocity of primary subhalo
-                [default 'bounded_vcom']
-            rot_scheme (str) - Scheme to calculate rotation matrix of the primary
-                [default 'bounded_L']
-        
-        Returns:
-            None, but sets self._cen, self._vcen, and self._rot
-        '''    
-        # Determine primary subhalo position offset
-        if self._cen_is_set:
-            warnings.warn('Centering has already been performed. '
-                          'Not centering again.')
-        else:
-            cen_coords = self.get_coordinates(cen_ptype, physical=False, 
-                                            internal=True)
-            cen_masses = self.get_masses(cen_ptype, physical=False, 
-                                        internal=True)
-            self._cen = self.find_position_center(cen_coords, cen_masses, 
-                scheme=cen_scheme, **kwargs)
-            self._cen_ptype = cen_ptype
-            self._cen_is_set = True
-                                          
-        # Determine primary subhalo velocity offset
-        if self._vcen_is_set:
-            warnings.warn('Velocity centering has already been performed. '
-                          'Not centering again')
-        else:
-            vcen_coords = self.get_coordinates(vcen_ptype, physical=False, 
-                                            internal=True)
-            vcen_vels = self.get_velocities(vcen_ptype, physical=False, 
-                                            internal=True)
-            vcen_masses = self.get_masses(vcen_ptype, physical=False, 
-                                        internal=True)
-            self._vcen = self.find_velocity_center(vcen_coords, vcen_vels, 
-                vcen_masses, scheme=vcen_scheme, **kwargs)
-            self._vcen_ptype = vcen_ptype
-            self._vcen_is_set = True
-        
-        # Determine rotation matrix
-        if self._rot_is_set:
-            warnings.warn('Rotation has already been performed. '
-                          'Not rotating again.')
-        else:
-            rot_coords = self.get_coordinates(rot_ptype, physical=False, 
-                                            internal=True)
-            rot_vels = self.get_velocities(rot_ptype, physical=False, 
-                                            internal=True)
-            rot_masses = self.get_masses(rot_ptype, physical=False, 
-                                        internal=True)
-            self._rot = self.find_rotation_matrix(rot_coords, rot_vels, rot_masses, 
-                scheme=rot_scheme, **kwargs)
-            self._rot_ptype = rot_ptype
-            self._rot_is_set = True
-        return None
+
+    ### Getters ###
 
     def get_masses(self,ptype,physical=True,internal=False,key=None,indx=()):
         '''get_masses:
@@ -459,7 +380,89 @@ class TNGCutout():
         vxvv = np.array([R/ro,vR/vo,vT/vo,z/ro,vz/vo,phi]).T
         orbs = orbit.Orbit(vxvv,ro=ro,vo=vo)
         return orbs
-            
+
+    ### Centering and Rectification ###
+
+    def center_and_rectify(self,cen_ptype='PartType4', vcen_ptype='PartType4', 
+        rot_ptype='PartType0', cen_scheme='ssc', vcen_scheme='bounded_vcom',
+        rot_scheme='bounded_L', **kwargs):
+        '''center_and_rectify:
+        
+        Center the simulation on the primary subhalo and rectify the coordinates 
+        such that the disk of the galaxy lies in the XY plane.
+        
+        Schemes to determine position offset:
+            'ssc' - Shrinking-spherical-center algorithm of Power+ 2003
+        
+        Schemes to determine velocity offset:
+            'bounded_com' - Rotate radius-bounded mass-weighted velocity mean
+        
+        Schemes to determine rotation:
+            'bounded_L' - Rotate to radius-bounded angular momentum
+        
+        Args:
+            cen_ptype (str) - Type of particles to use to calculate the 
+                position offset of the primary [default PartType4 (star)]
+            vcen_ptype (str) - Type of particles to use to calculate the 
+                velocity offset of the primary [default PartType4 (gas)]
+            rot_ptype (str) - Type of particles to use to calculate the 
+                rotation matrix of the primary [default PartType0 (gas)]
+            cen_scheme (str) - Scheme to calculate position of primary subhalo
+                [default 'ssc']
+            vcen_scheme (str) - Scheme to calculate velocity of primary subhalo
+                [default 'bounded_vcom']
+            rot_scheme (str) - Scheme to calculate rotation matrix of the primary
+                [default 'bounded_L']
+        
+        Returns:
+            None, but sets self._cen, self._vcen, and self._rot
+        '''    
+        # Determine primary subhalo position offset
+        if self._cen_is_set:
+            warnings.warn('Centering has already been performed. '
+                          'Not centering again.')
+        else:
+            cen_coords = self.get_coordinates(cen_ptype, physical=False, 
+                                            internal=True)
+            cen_masses = self.get_masses(cen_ptype, physical=False, 
+                                        internal=True)
+            self._cen = self.find_position_center(cen_coords, cen_masses, 
+                scheme=cen_scheme, **kwargs)
+            self._cen_ptype = cen_ptype
+            self._cen_is_set = True
+                                          
+        # Determine primary subhalo velocity offset
+        if self._vcen_is_set:
+            warnings.warn('Velocity centering has already been performed. '
+                          'Not centering again')
+        else:
+            vcen_coords = self.get_coordinates(vcen_ptype, physical=False, 
+                                            internal=True)
+            vcen_vels = self.get_velocities(vcen_ptype, physical=False, 
+                                            internal=True)
+            vcen_masses = self.get_masses(vcen_ptype, physical=False, 
+                                        internal=True)
+            self._vcen = self.find_velocity_center(vcen_coords, vcen_vels, 
+                vcen_masses, scheme=vcen_scheme, **kwargs)
+            self._vcen_ptype = vcen_ptype
+            self._vcen_is_set = True
+        
+        # Determine rotation matrix
+        if self._rot_is_set:
+            warnings.warn('Rotation has already been performed. '
+                          'Not rotating again.')
+        else:
+            rot_coords = self.get_coordinates(rot_ptype, physical=False, 
+                                            internal=True)
+            rot_vels = self.get_velocities(rot_ptype, physical=False, 
+                                            internal=True)
+            rot_masses = self.get_masses(rot_ptype, physical=False, 
+                                        internal=True)
+            self._rot = self.find_rotation_matrix(rot_coords, rot_vels, rot_masses, 
+                scheme=rot_scheme, **kwargs)
+            self._rot_ptype = rot_ptype
+            self._rot_is_set = True
+        return None 
     
     def find_position_center(self,coords,masses,scheme='ssc',**kwargs):
         '''find_position_center:
@@ -684,6 +687,8 @@ class TNGCutout():
         '''
         return np.dot(R,v.T).T
     
+    ### Energy - Jcirc relation ###
+
     def get_E_Jcirc_spline(self,ptype,angmom='J',scheme='empirical'):
         '''get_E_Jcirc_spline:
 
