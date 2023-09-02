@@ -88,7 +88,32 @@ def logprior_dens(densfunc, params):
     Args:
         densfunc (function): Function that returns the density profile
         params (list): List of parameters for the density profile
+    
+    Returns:
+        logprior (float): Log prior on the density profile
     '''
+    if isinstance(densfunc, pdens.TwoPowerSpherical):
+        alpha,beta,a,_ = params
+        # Place a log-uniform prior on alpha
+        alpha_min = 0.001
+        alpha_max = 1000.
+        prior_alpha = scipy.stats.loguniform.pdf(alpha, alpha_min, alpha_max)
+        # Place a log-uniform prior on beta
+        beta_min = 0.001
+        beta_max = 1000.
+        prior_beta = scipy.stats.loguniform.pdf(beta, beta_min, beta_max)
+        # Place a log-uniform prior on a
+        a_min = 0.001
+        a_max = 1000.
+        prior_a = scipy.stats.loguniform.pdf(a, a_min, a_max)
+        return np.log(prior_alpha*prior_beta*prior_a)
+    if isinstance(densfunc, pdens.NFWProfile):
+        a,_ = params
+        # Place a log-uniform prior on a
+        a_min = 0.001
+        a_max = 1000.
+        prior_a = scipy.stats.loguniform.pdf(a, a_min, a_max)
+        return np.log(prior_a)
     # if densfunc.__name__ == 'spherical':
     #     prior = scipy.stats.norm.pdf(params[0], loc=2.5, scale=1)
     #     return np.log(prior)
@@ -102,11 +127,20 @@ def domain_prior_dens(densfunc, params):
     Args:
         densfunc (function): Function that returns the density profile
         params (list): List of parameters for the density profile
+    
+    Returns:
+        domain_prior (bool): True if the parameters are in the domain of the
+            density profile
     '''
     if isinstance(densfunc, pdens.TwoPowerSpherical):
         alpha,beta,a,A = params
         if alpha <= 0: return False
         if alpha >= beta: return False
+        # if beta > 10: return False
+        if a <= 0: return False
+        if A <= 0: return False
+    if isinstance(densfunc, pdens.NFWProfile):
+        a,A = params
         if a <= 0: return False
         if A <= 0: return False
     return True
