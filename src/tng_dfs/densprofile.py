@@ -253,3 +253,99 @@ def _RToxi(r, a=1):
         else:
             return 1.0
     return out
+
+# ----------------------------------------------------------------------------
+
+# Utilities
+
+def calculate_critical_density(H0=_HUBBLE_PARAM, z=0, Om0=0.3, Ode0=0.7, 
+    Ok0=0.0, Or0=0.0):
+    '''calculate_critical_density:
+
+    Calculate the critical density of the universe. Default parameters will 
+    return the Planck 2015 value. Will also scan for defaults in Planck 2018 
+    and WMAP9.
+
+    Args:
+        H0 (float): Hubble parameter in km/s/Mpc at z=0, can be astropy 
+            quantity [default: 0.6774]
+        z (float): Redshift [default: 0]
+        Om0 (float): Matter density parameter at z=0 [default: 0.3]
+        Ode0 (float): Dark energy density parameter at z=0 [default: 0.7]
+        Ok0 (float): Curvature density parameter at z=0 [default: 0.0]
+
+    Returns:
+        rho_crit (float): Critical density of the universe as astropy quantity
+            in Msun/kpc^3
+    '''
+    # Need to actually convert to
+    if _HUBBLE_PARAM*100 == astropy.cosmology.Planck15.H0.value and z == 0.:
+        rho_crit = astropy.cosmology.Planck15.critical_density0
+    elif _HUBBLE_PARAM*100 == astropy.cosmology.Planck18.H0.value and z == 0.:
+        rho_crit = astropy.cosmology.Planck18.critical_density0
+    elif _HUBBLE_PARAM*100 == astropy.cosmology.WMAP9.H0.value and z == 0.:
+        rho_crit = astropy.cosmology.WMAP9.critical_density0
+    else:
+        raise NotImplementedError("Need to implement this")
+    return rho_crit.to(apu.Msun/apu.kpc**3)
+
+def get_virial_radius(r, mass, rho_crit=None, overdensity_factor=200.):
+    '''get_virial_radius:
+
+    Determine the virial radius of a set of particles based on their radii and 
+    masses, given some critical density and density factor
+
+    Args:
+        r (array): Array of radii in kpc, can be astropy quantity.
+        mass (array): Array of masses in Msun, can be astropy quantity.
+        rho_crit (float): Critical density of the universe in Msun/kpc^3. Can 
+            be astropy quantity. If not supplied will be calculated using 
+            calculate_critical_density() with default arguments.
+        overdensity_factor (float): Overdensity factor [default: 200.]
+    
+    Returns:
+        Rvir (float): Virial radius in kpc, astropy quantity
+    '''
+    # Parse for astropy quantities
+    if isinstance(r, apu.Quantity):
+        r = r.to(apu.kpc).value
+    if isinstance(mass, apu.Quantity):
+        mass = mass.to(apu.Msun).value
+    if rho_crit is None:
+        rho_crit = calculate_critical_density().to(apu.Msun/apu.kpc**3).value
+    elif isinstance(rho_crit, apu.Quantity):
+        rho_crit = rho_crit.to(apu.Msun/apu.kpc**3).value
+    
+    # Search for the virial radius using a binary search
+    argsort = np.argsort(r)
+    r = r[argsort]
+    mass = mass[argsort]
+
+    # Function to calculate the enclosed mass
+    mean_dens = lambda R: np.sum(mass[r <= R])/((4./3.)*np.pi*R**3)
+
+    # Test the outermost radius
+    if mean_dens(r.max()) > overdensity_factor*rho_crit:
+        warnings.warn('Most distant particle is already within the virial'
+            ' radius, returning r.max()')
+        return r.max()*apu.kpc
+
+    # Binary search
+    counter = 0
+    while True:
+        R = (r.max() - r.min())/2. + r.min()
+        if mean_dens(R) > overdensity_factor*rho_crit:
+            mask = (r >= R)
+            r = r[mask]
+            mass = mass[mask]
+        else:
+            mask = (r <= R)
+            r = r[mask]
+            mass = mass[mask]
+        if len(r) == 1:
+            return R*apu.kpc
+        if counter > 100:
+            raise RuntimeError("Binary search failed to converge")
+        counter += 1
+        
+
