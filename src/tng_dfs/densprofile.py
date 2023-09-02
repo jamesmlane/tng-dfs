@@ -103,9 +103,93 @@ class TwoPowerSpherical(SphericalDensityProfile):
         if isinstance(a, apu.Quantity):
             a = a.to(apu.kpc).value
         if isinstance(A, apu.Quantity):
-            A = A.to(apu.Msun/apu.kpc**3).value
-        return alpha, beta, a, A
+# NFW Spherical
+
+class NFWSpherical(SphericalDensityProfile):
+    '''NFWSpherical:
+
+    Two power law density profile with alpha=1 and beta=3
+
+    The parameters of the profile are:
+        a: Scale radius [kpc, can be an astropy quantity]
+        amp: Amplitude [Msun/kpc^3, can be an astropy quantity]
+    '''
+    def __init__(self):
+        '''__init__:
+        
+        Initialize the density profile.
+        '''
+        super(NFWSpherical, self).__init__()
+        self.n_params = 2
+        self.param_names = ['a', 'amp']
+
+    def __call__(self, R, phi, z, params):
+        '''__call__:
+
+        Evaluate the density profile
+
+        Args:
+            R, phi, z (array): Arrays of galactocentric cylindrical radius, 
+                azimuth, and height above the plane. Can be astropy quantities.
+            params (list): List of parameters for the density profile, see
+                class docstring.
+        '''
+        R, phi, z = self._parse_R_phi_z_input(R, phi, z)
+        r = np.sqrt(R**2 + z**2)
+        a, amp = self._parse_params(params)
+        alpha, beta = 1, 3
+        return amp*(r/a)**(-alpha)*(1+(r/a))**(alpha-beta)
     
+    def _parse_params(self, params):
+        '''_parse_params:
+
+        Parse the parameters of the density profile. Can either be a list of 
+        [a,] or [a,A].
+
+        Args:
+            params (list): List of parameters for the density profile, see
+                class docstring.
+        
+        Returns:
+            params (list): List of parameters for the density profile, see
+                class docstring.
+        '''
+        if len(params) == 1:
+            a, = params
+            amp = 1.0
+        elif len(params) == 2:
+            a, amp = params
+        else:
+            raise ValueError("params must have length 1 or 2")
+        if isinstance(a, apu.Quantity):
+            a = a.to(apu.kpc).value
+        if isinstance(amp, apu.Quantity):
+            amp = amp.to(apu.Msun/apu.kpc**3).value
+        return a, amp
+    
+    def mass(self, r, params, integrate=False):
+        '''mass:
+
+        Calculate the enclose mass of the density profile.
+
+        Args:
+            R, phi, z (array): Arrays of galactocentric cylindrical radius, 
+                azimuth, and height above the plane. Can be astropy quantities.
+            params (list): List of parameters for the density profile, see
+                class docstring.
+        
+        Returns:
+            mass (array): Array of enclosed masses in Msun
+        '''
+        if integrate:
+            intfunc = lambda r: r**2*self(r, 0., 0., params)
+            return 4*np.pi*scipy.integrate.quad(intfunc, 0, r)[0]
+        else:
+            a, amp = self._parse_params(params)
+            return 4*np.pi*amp*(a**3)*((a/(a+r))+np.log(a+r))
+
+# Broken Power Law Spherical
+
 class BrokenPowerLawSpherical(SphericalDensityProfile):
     '''BrokenPowerLawSpherical:
 
