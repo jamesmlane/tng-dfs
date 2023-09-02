@@ -15,6 +15,7 @@ __author__ = "James Lane"
 ### Imports
 import numpy as np
 from . import densprofile as pdens
+import scipy.stats
 
 # ----------------------------------------------------------------------------
 
@@ -51,6 +52,13 @@ def loglike_dens(params, densfunc, R, phi, z, mass=None, usr_log_prior=None,
             supplied by the user. Call signature is 
             usr_log_prior(densfunc, params, *usr_log_prior_params)
 
+    Returns:
+        loglike (float): Log likelihood of the density profile
+        and if parts=True:
+            logsumdens (float): Log of the sum of the density profile
+            logeffvol (float): Log of the effective volume
+            logprior (float): Log of the prior on the density profile
+            usrlogprior (float): Log of the user supplied prior
     '''
     # Evaluate the domain prior
     if not domain_prior_dens(densfunc, params):
