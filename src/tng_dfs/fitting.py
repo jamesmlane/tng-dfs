@@ -111,6 +111,25 @@ def domain_prior_dens(densfunc, params):
         if A <= 0: return False
     return True
 
+def _multiprocessing_init_dens(_densfunc, _R, _phi, _z, _mass, 
+    _usr_log_prior, _usr_log_prior_params, _effvol_params, _parts):
+    '''_multiprocessing_init_dens:
+
+    Initialize multiprocessing for loglike_dens (no underscores). Provides 
+    global variable access for multiprocessing.
+    '''
+    global densfunc, R, phi, z, mass, usr_log_prior, usr_log_prior_params,\
+        effvol_params, parts
+    densfunc = _densfunc
+    R = _R
+    phi = _phi
+    z = _z
+    mass = _mass
+    usr_log_prior = _usr_log_prior
+    usr_log_prior_params  = _usr_log_prior_params
+    effvol_params = _effvol_params
+    parts = _parts
+
 # Binned density profiles
 
 def mloglike_binned_dens(*args,**kwargs):
