@@ -14,12 +14,16 @@ __author__ = "James Lane"
 
 ### Imports
 import numpy as np
+import warnings
 from galpy import potential
 from galpy import orbit
 import astropy.units as apu
+import astropy.cosmology
 import scipy.interpolate
 import scipy.integrate
 import scipy.special
+
+_HUBBLE_PARAM = 0.6774 # Planck 2015 value
 _ro = 8.275
 _vo = 220.
 
@@ -35,6 +39,25 @@ class DensityProfile(object):
     def __init__(self):
         pass
 
+    def _parse_R_phi_z_input(self, R, phi, z):
+        '''_parse_R_phi_z_input:
+
+        Parse input R, phi, z
+
+        Args:
+            R, phi, z (array): Arrays of galactocentric cylindrical radius, 
+                azimuth, and height above the plane. Can be astropy quantities.
+        
+        Returns:
+            R, phi, z (array): Same as input, but in kpc, radians, and kpc
+        '''
+        if isinstance(R, apu.Quantity):
+            R = R.to(apu.kpc).value
+        if isinstance(phi, apu.Quantity):
+            phi = phi.to(apu.rad).value
+        if isinstance(z, apu.Quantity):
+            z = z.to(apu.kpc).value
+        return R, phi, z
 
 class SphericalDensityProfile(DensityProfile):
     '''SphericalDensityProfile:
@@ -43,6 +66,27 @@ class SphericalDensityProfile(DensityProfile):
     '''
     def __init__(self):
         super(SphericalDensityProfile, self).__init__()
+    
+    def effective_volume(self, params, rmin=0., rmax=np.inf, integrate=False):
+        '''effective_volume:
+
+        Integrate the density profile over all space. This is the effective
+        volume of the density profile.
+
+        Args:
+            params (list): List of parameters for the density profile
+            rmin (float): Minimum radius in kpc [default: 0.]
+            rmax (float): Maximum radius in kpc [default: np.inf]
+        
+        Returns:
+            effvol (float): Effective volume of the density profile
+        '''
+        if isinstance(rmin, apu.Quantity):
+            rmin = rmin.to(apu.kpc).value
+        if isinstance(rmax, apu.Quantity):
+            rmax = rmax.to(apu.kpc).value
+        return self.mass(rmax, params, integrate=integrate)\
+            - self.mass(rmin, params, integrate=integrate)
 
 # ----------------------------------------------------------------------------
 
