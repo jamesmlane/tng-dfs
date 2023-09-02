@@ -103,6 +103,27 @@ class TwoPowerSpherical(SphericalDensityProfile):
         if isinstance(a, apu.Quantity):
             a = a.to(apu.kpc).value
         if isinstance(A, apu.Quantity):
+    def mass(self, r, params, integrate=False):
+        '''mass:
+
+        Calculate the enclose mass of the density profile.
+
+        Args:
+            r (array): Array of galactocentric spherical radii in kpc
+            params (list): List of parameters for the density profile, see
+                class docstring.
+        
+        Returns:
+            mass (array): Array of enclosed masses in Msun
+        '''
+        alpha, beta, a, amp = self._parse_params(params)
+        if integrate:
+            intfunc = lambda r: r**2*self(r, 0., 0., params=params)
+            return 4*np.pi*scipy.integrate.quad(intfunc, 0, r)[0]
+        else:
+            return 4*np.pi*amp*(r**3)*(r/a)**(-alpha)*scipy.special.hyp2f1(
+                3-alpha, beta-alpha, 4-alpha, -r/a)/(3-alpha)
+    
 # NFW Spherical
 
 class NFWSpherical(SphericalDensityProfile):
