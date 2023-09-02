@@ -48,6 +48,8 @@ class SphericalDensityProfile(DensityProfile):
 
 ### Density profiles
 
+# Two Power Spherical
+
 class TwoPowerSpherical(SphericalDensityProfile):
     '''TwoPowerSpherical:
 
@@ -74,11 +76,17 @@ class TwoPowerSpherical(SphericalDensityProfile):
         Evaluate the density profile
 
         Args:
-            r (array): Array of galactocentric spherical radii in kpc
-            A (float): Amplitude of the density profile
+            R, phi, z (array): Arrays of galactocentric cylindrical radius, 
+                azimuth, and height above the plane. Can be astropy quantities.
+            params (list): List of parameters for the density profile, see
+                class docstring.
+            
+        Returns:
+            dens (array): Array of densities in Msun/kpc^3
         '''
-        alpha, beta, a, amp = self._parse_params(params)
+        R, phi, z = self._parse_R_phi_z_input(R, phi, z)
         r = np.sqrt(R**2 + z**2)
+        alpha, beta, a, amp = self._parse_params(params)
         return amp*(r/a)**(-alpha)*(1+(r/a))**(alpha-beta)
     
     def _parse_params(self, params):
@@ -88,21 +96,26 @@ class TwoPowerSpherical(SphericalDensityProfile):
         [alpha,beta,a] or [alpha,beta,a,A].
 
         Args:
-            params (list): List of parameters for the density profile
+            params (list): List of parameters for the density profile, see
+                class docstring.
         
         Returns:
-            params
+            params (list): List of parameters for the density profile, see
+                class docstring.
         '''
         if len(params) == 3:
             alpha, beta, a = params
             A = 1.0
         elif len(params) == 4:
-            alpha, beta, a, A = params
+            alpha, beta, a, amp = params
         else:
             raise ValueError("params must have length 3 or 4")
         if isinstance(a, apu.Quantity):
             a = a.to(apu.kpc).value
         if isinstance(A, apu.Quantity):
+            amp = amp.to(apu.Msun/apu.kpc**3).value
+        return alpha, beta, a, amp
+    
     def mass(self, r, params, integrate=False):
         '''mass:
 
