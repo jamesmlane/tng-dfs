@@ -35,7 +35,7 @@ def mloglike_dens(*args,**kwargs):
     return -loglike_dens(*args,**kwargs)
 
 def loglike_dens(params, densfunc, R, phi, z, mass=None, usr_log_prior=None, 
-    effvol_params=None, parts=False):
+    usr_log_prior_params=None, effvol_params=None, parts=False):
     '''loglike_dens:
     
     Log likelihood function for fitting a density profile
@@ -49,7 +49,8 @@ def loglike_dens(params, densfunc, R, phi, z, mass=None, usr_log_prior=None,
         z (array): Array of galactocentric cylindrical heights
         usr_log_prior (function): Function that returns the log prior
             supplied by the user. Call signature is 
-            usr_log_prior(params, densfunc)
+            usr_log_prior(densfunc, params, *usr_log_prior_params)
+
     '''
     # Evaluate the domain prior
     if not domain_prior_dens(densfunc, params):
@@ -58,7 +59,7 @@ def loglike_dens(params, densfunc, R, phi, z, mass=None, usr_log_prior=None,
     logprior = logprior_dens(densfunc, params)
     # Evaluate any user supplied prior
     if callable(usr_log_prior):
-        usrlogprior = usr_log_prior(params, densfunc)
+        usrlogprior = usr_log_prior(densfunc, params, *usr_log_prior_params)
         if np.isinf(usrlogprior):
             return -np.inf
     else:
