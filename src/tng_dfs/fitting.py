@@ -71,7 +71,7 @@ def loglike_dens(params, densfunc, R, phi, z, mass=None, usr_log_prior=None,
     #     _mass = mass/params[densfunc.param_names.index('amp')]
     logdens = np.log(mass*densfunc(R, phi, z, params))
     # Evaluate the effective volume
-    effvol = densfunc.effective_volume(params, *effvol_params)
+    effvol = densfunc.effective_volume(params, *effvol_params)/np.mean(mass)
     # logeffvol = np.log(effvol)
     # Evaluate the log likelihood
     loglike = np.sum(logdens) - effvol + logprior + usrlogprior
