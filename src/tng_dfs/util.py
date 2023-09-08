@@ -597,6 +597,13 @@ def ptype_to_str(ptype):
              'PartType5']
     return _strs[ptype_to_indx(ptype)]
 
+def parse_astropy_quantity(q, unit):
+    if isinstance(q,apu.Quantity):
+        q = q.to(unit).value
+    elif isinstance(q,(list,tuple,np.ndarray)):
+        q = np.array([parse_astropy_quantity(qq,unit) for qq in q])
+    return q
+
 # ----------------------------------------------------------------------------
 
 # Misc. functions
