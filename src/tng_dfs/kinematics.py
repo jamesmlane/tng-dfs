@@ -559,3 +559,22 @@ def beta_ossipkov_merrit(r,ra=1.):
         beta (float or array): Anisotropy parameter
     '''
     return (r**2)/(r**2+ra**2)
+
+def _E_Enorm_Jz_Jcirc_bounds():
+    '''_E_Enorm_Jz_Jcirc_bounds:
+
+    Fetch the bounds for Jz_Jcirc vs E_Enorm plane for the standard kinematic 
+    decomposition.
+
+    Args:
+        None
+    
+    Returns:
+        Jz_Jcirc_halo_bound (float) - Jz/Jcirc boundary between halo and disk
+        Jz_Jcirc_disk_bound (float) - Jz/Jcirc boundary between thin/thick disk
+        Enorm_bulge_bound (float) - Enorm boundary between bulge and halo
+    '''
+    Jz_Jcirc_halo_bound = 0.5
+    Jz_Jcirc_disk_bound = 0.8
+    Enorm_bulge_bound = -0.75
+    return Jz_Jcirc_halo_bound,Jz_Jcirc_disk_bound,Enorm_bulge_bound
