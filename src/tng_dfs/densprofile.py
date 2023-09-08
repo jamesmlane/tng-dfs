@@ -149,14 +149,14 @@ class TwoPowerSpherical(SphericalDensityProfile):
         '''
         if len(params) == 3:
             alpha, beta, a = params
-            A = 1.0
+            amp = 1.0
         elif len(params) == 4:
             alpha, beta, a, amp = params
         else:
             raise ValueError("params must have length 3 or 4")
         if isinstance(a, apu.Quantity):
             a = a.to(apu.kpc).value
-        if isinstance(A, apu.Quantity):
+        if isinstance(amp, apu.Quantity):
             amp = amp.to(apu.Msun/apu.kpc**3).value
         return alpha, beta, a, amp
     
@@ -264,7 +264,7 @@ class NFWSpherical(SphericalDensityProfile):
             return 4*np.pi*scipy.integrate.quad(intfunc, 0, r)[0]
         else:
             a, amp = self._parse_params(params)
-            return 4*np.pi*amp*(a**3)*(np.log(1+r/a)-(r/a)/(1+r/a))
+            return 4*np.pi*amp*(a**3)*((a/(a+r))+np.log(a+r))
 
 # Broken Power Law Spherical
 
