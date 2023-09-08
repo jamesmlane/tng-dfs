@@ -336,11 +336,10 @@ def mloglike_dens(*args,**kwargs):
     return -loglike_dens(*args,**kwargs)
 
 def loglike_dens(params, densfunc, R, phi, z, mass=None, usr_log_prior=None, 
-    usr_log_prior_params=None, effvol_params=None, parts=False):
+    usr_log_prior_params=None, effvol_params=[], parts=False):
     '''loglike_dens:
     
     Log likelihood function for fitting a density profile
-    
 
     Args:
         params (list): List of parameters for the density profile
@@ -379,6 +378,8 @@ def loglike_dens(params, densfunc, R, phi, z, mass=None, usr_log_prior=None,
     #     assert len(params) == densfunc.n_params # Has amplitude
     #     _mass = mass/params[densfunc.param_names.index('amp')]
     logdens = np.log(mass*densfunc(R, phi, z, params))
+    if np.any(np.isnan(logdens)):
+        return -np.inf
     # Evaluate the effective volume
     effvol = densfunc.effective_volume(params, *effvol_params)/np.mean(mass)
     # logeffvol = np.log(effvol)
@@ -507,6 +508,11 @@ def loglike_binned_dens(params, densfunc, r, rho, usr_log_prior=None,
             logprior (float): Log of the prior on the density profile
             usrlogprior (float): Log of the user supplied prior
     '''
+    # Extract hyperparameters
+    # sigma = params[-1]
+    # if sigma is None:
+    #     sigma = 1.
+    # params = params[:-1]
     # Evaluate the domain prior
     if not domain_prior_binned_dens(densfunc, params):
         return -np.inf
@@ -518,9 +524,12 @@ def loglike_binned_dens(params, densfunc, r, rho, usr_log_prior=None,
         if np.isinf(usrlogprior):
             return -np.inf
     # Evaluate the density profile
+    # dens = densfunc(r, 0., 0., params)
+    # Evaluate the gaussian log-likelihood
+    # logdiffsum = -0.5*np.sum((dens-rho)**2/sigma**2+np.log(2*np.pi*sigma**2))
+    # Evaluate the objective function
     logdens = np.log(densfunc(r, 0., 0., params))
-    # Evaluate the log likelihood
-    logdiffsum = np.sum(np.square(logdens-np.log(rho))) 
+    logdiffsum = -np.sum(np.square(logdens-np.log(rho))) 
     loglike = logdiffsum + logprior + usrlogprior
     if parts:
         return loglike, logdiffsum, logprior, usrlogprior
@@ -539,7 +548,7 @@ def logprior_binned_dens(densfunc, params):
     Returns:
         logprior (float): Log prior on the density profile
     '''
-    if isinstance(densfunc, pdens.NFWProfile):
+    if isinstance(densfunc, pdens.NFWSpherical):
         a,_ = params
         # Place a log-uniform prior on a
         a_min = 0.001
@@ -561,10 +570,11 @@ def domain_prior_binned_dens(densfunc, params):
         domain_prior (bool): True if the parameters are in the domain of the
             density profile
     '''
-    if isinstance(densfunc, pdens.NFWProfile):
+    if isinstance(densfunc, pdens.NFWSpherical):
         a,A = params
         if a <= 0: return False
         if A <= 0: return False
+    return True
 
 
 # action distribution functions
