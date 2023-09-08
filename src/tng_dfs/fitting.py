@@ -417,13 +417,44 @@ def logprior_dens(densfunc, params):
         a_max = 1000.
         prior_a = scipy.stats.loguniform.pdf(a, a_min, a_max)
         return np.log(prior_alpha*prior_beta*prior_a)
-    if isinstance(densfunc, pdens.NFWProfile):
+    if isinstance(densfunc, pdens.NFWSpherical):
         a,_ = params
         # Place a log-uniform prior on a
         a_min = 0.001
         a_max = 1000.
         prior_a = scipy.stats.loguniform.pdf(a, a_min, a_max)
         return np.log(prior_a)
+    if isinstance(densfunc, pdens.SinglePowerCutoffSpherical):
+        alpha,rc,_ = params
+        # Place a log-uniform prior on alpha
+        # alpha_min = 0.001
+        # alpha_max = 1000.
+        # prior_alpha = scipy.stats.loguniform.pdf(alpha, alpha_min, alpha_max)
+        # Place a log-uniform prior on rc
+        rc_min = 0.001
+        rc_max = 100.
+        prior_rc = scipy.stats.loguniform.pdf(rc, rc_min, rc_max)
+        return np.log(prior_rc)
+    if isinstance(densfunc, pdens.DoubleExponentialDisk):
+        return 0.
+        # hR,hz,_ = params
+        # # Place a log-uniform prior on hR
+        # hR_min = 0.001
+        # hR_max = 100.
+        # prior_hR = scipy.stats.loguniform.pdf(hR, hR_min, hR_max)
+        # # Place a log-uniform prior on hz
+        # hz_min = 0.001
+        # hz_max = 100.
+        # prior_hz = scipy.stats.loguniform.pdf(hz, hz_min, hz_max)
+        # return np.log(prior_hR*prior_hz)
+    # Handle composite density profiles recursively
+    if isinstance(densfunc,pdens.CompositeDensityProfile):
+        prior = 0.
+        for i in range(densfunc.n_densprofiles):
+            n_params = densfunc.densprofiles[i].n_params
+            prior += logprior_dens(densfunc.densprofiles[i],
+                params=params[i*n_params:(i+1)*n_params])
+        return prior
     # if densfunc.__name__ == 'spherical':
     #     prior = scipy.stats.norm.pdf(params[0], loc=2.5, scale=1)
     #     return np.log(prior)
@@ -443,16 +474,33 @@ def domain_prior_dens(densfunc, params):
             density profile
     '''
     if isinstance(densfunc, pdens.TwoPowerSpherical):
-        alpha,beta,a,A = params
+        alpha,beta,a,amp = params
         if alpha <= 0: return False
         if alpha >= beta: return False
         # if beta > 10: return False
         if a <= 0: return False
-        if A <= 0: return False
-    if isinstance(densfunc, pdens.NFWProfile):
-        a,A = params
+        if amp <= 0: return False
+    if isinstance(densfunc, pdens.NFWSpherical):
+        a,amp = params
         if a <= 0: return False
-        if A <= 0: return False
+        if amp <= 0: return False
+    if isinstance(densfunc, pdens.SinglePowerCutoffSpherical):
+        alpha,rc,amp = params
+        # if alpha <= 0: return False
+        if rc <= 0: return False
+        if amp <= 0: return False
+    if isinstance(densfunc, pdens.DoubleExponentialDisk):
+        hR,hz,amp = params
+        if hR <= 0: return False
+        if hz <= 0: return False
+        if amp <= 0: return False
+    # Handle composite density profiles recursively
+    if isinstance(densfunc,pdens.CompositeDensityProfile):
+        for i in range(densfunc.n_densprofiles):
+            n_params = densfunc.densprofiles[i].n_params
+            if not domain_prior_dens(densfunc.densprofiles[i], 
+                params=params[i*n_params:(i+1)*n_params]):
+                return False
     return True
 
 def _multiprocessing_init_dens(_densfunc, _R, _phi, _z, _mass, 
