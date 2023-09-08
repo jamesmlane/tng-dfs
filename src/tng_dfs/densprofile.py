@@ -476,6 +476,289 @@ class DoubleBrokenPowerLawSpherical(SphericalDensityProfile):
                 _int -= r1norm*r2norm*r2**(3-alpha3)/(3-alpha3)
             return 4*np.pi*amp*_int
 
+class SinglePowerCutoffSpherical(SphericalDensityProfile):
+    '''SinglePowerCutoffSpherical:
+
+    Single power law density profile with an exponential cutoff.
+
+    The parameters of the profile are:
+        alpha: Power law index
+        rc: Exponential scale length [kpc, can be an astropy quantity]
+        amp: Amplitude [Msun/kpc^3, can be an astropy quantity]
+    '''
+    def __init__(self):
+        '''__init__:
+
+        Initialize the density profile.
+        '''
+        super(SinglePowerCutoffSpherical, self).__init__()
+        self.n_params = 3
+        self.param_names = ['alpha', 'rc', 'amp']
+
+    def __call__(self, R, phi, z, params):
+        '''__call__:
+
+        Evaluate the density profile
+
+        Args:
+            R, phi, z (array): Arrays of galactocentric cylindrical radius, 
+                azimuth, and height above the plane. Can be astropy quantities.
+            params (list): List of parameters for the density profile, see
+                class docstring.
+            
+        Returns:
+            dens (array): Array of densities in Msun/kpc^3
+        '''
+        R, phi, z = self._parse_R_phi_z_input(R, phi, z)
+        r = np.sqrt(R**2 + z**2)
+        alpha, rc, amp = self._parse_params(params)
+        return amp * (r ** (-alpha)) * np.exp(-(r / rc)**2)
+
+    def _parse_params(self, params):
+        '''_parse_params:
+
+        Parse the parameters of the density profile.
+
+        Args:
+            params (list): List of parameters for the density profile, see
+                class docstring.
+        
+        Returns:
+            params (list): List of parameters for the density profile, see
+                class docstring.
+        '''
+        if len(params) == 2:
+            alpha, rc = params
+            amp = 1.
+        if len(params) == 3:
+            alpha, rc, amp = params
+        else:
+            raise ValueError("params must have length 3")
+        if isinstance(rc, apu.Quantity):
+            rc = rc.to(apu.kpc).value
+        if isinstance(amp, apu.Quantity):
+            amp = amp.to(apu.Msun / apu.kpc ** 3).value
+        return alpha, rc, amp
+
+    def mass(self, r, params, integrate=False, _use_hypergeometric=True):
+        '''mass:
+
+        Calculate the enclosed mass of the density profile.
+
+        Args:
+            r (array): Array of galactocentric spherical radii in kpc
+            params (list): List of parameters for the density profile, see
+                class docstring.
+        
+        Returns:
+            mass (array): Array of enclosed masses in Msun
+        '''
+        # _use_hypergeometric = False # Better behaviour at alpha > 3
+        if isinstance(r, apu.Quantity):
+            r = r.to(apu.kpc).value
+        _r_isarray = True
+        try:
+            len(r)
+        except TypeError:
+            r = float(r)
+            r = np.atleast_1d(r)
+            _r_isarray = False
+        alpha, rc, amp = self._parse_params(params)
+        if integrate:
+            intfunc = lambda R: R ** 2 * self(R, 0., 0., params=params)
+            return 4 * np.pi * scipy.integrate.quad(intfunc, 0, r)[0]
+        else:
+            if _use_hypergeometric:
+                out = np.ones_like(r, dtype=float)
+                mask = np.isinf(r)
+                out[~mask] = (
+                    2.0*np.pi*r[~mask]**(3.0-alpha)/(1.5-alpha/2.0)\
+                    *scipy.special.hyp1f1(1.5-alpha/2.0, 2.5-alpha/2.0,
+                        -((r[~mask]/rc)**2.0)))
+                out[mask] = (2.0*np.pi*rc**(3.0-alpha)\
+                    *scipy.special.gamma(1.5-alpha / 2.0))
+                # For (r/rc) in the exponential rather than (r/rc)**2
+                # out[~mask] = 4.0*np.pi * (r[~mask]**(3.0-alpha)) * \
+                #     scipy.special.hyp1f1(3-alpha, 4-alpha, -(r[~mask]/rc)) / \
+                #     (3-alpha)
+                # out[mask] = 4.0*np.pi * (rc**(3.0-alpha)) * \
+                #     scipy.special.gamma(3-alpha)
+                if _r_isarray:
+                    return amp*out
+                else:
+                    return amp*out[0]
+            else:
+                out = 2 * np.pi * (rc ** (3-alpha)) * \
+                       scipy.special.gamma(1.5 - alpha/2.) * \
+                       scipy.special.gammainc(1.5 - alpha/2., (r / rc)**2.)
+                # For (r/rc) in the exponential rather than (r/rc)**2
+                # out = 4 * np.pi * (rc ** (3-alpha)) * \
+                #        scipy.special.gamma(3 - alpha) * \
+                #        scipy.special.gammainc(3 - alpha, r / rc)
+                if _r_isarray:
+                    return amp*out
+                else:
+                    return amp*out[0]
+                
+
+# ----------------------------------------------------------------------------
+
+### Axisymmetric density profiles
+
+# Miyamoto-Nagai
+
+class MiyamotoNagai(AxisymmetricDensityProfile):
+    '''MiyamotoNagai:
+
+    Miyamoto-Nagai disk density profile
+
+    The parameters of the profile are:
+        a: Scale radius [kpc, can be an astropy quantity]
+        b: Scale height [kpc, can be an astropy quantity]
+        amp: Amplitude [Msun/kpc^3, can be an astropy quantity]
+    '''
+
+    def __init__(self, ):
+        '''__init__:
+
+        Initialize the density profile.
+        '''
+        super(MiyamotoNagai, self).__init__()
+        self.n_params = 3
+        self.param_names = ['a', 'b', 'amp']
+    
+    def __call__(self, R, phi, z, params):
+        '''__call__:
+
+        Evaluate the density profile
+
+        Args:
+            R, phi, z (array): Arrays of galactocentric cylindrical radius, 
+                azimuth, and height above the x-y plane. Can be astropy quantities.
+            params (list): List of parameters for the density profile, see
+                class docstring.
+            
+        Returns:
+            dens (array): Array of densities in Msun/kpc^3
+        '''
+        R, phi, z = self._parse_R_phi_z_input(R, phi, z)
+        a, b, amp = self._parse_params(params)
+        sqrtbz = np.sqrt(b**2.0 + z**2.0)
+        asqrtbz = a + sqrtbz
+        term1 = amp*b**2/(4*np.pi)
+        term2 = a*R**2 + (a + 3*sqrtbz)*asqrtbz**2
+        term3 = (R**2 + asqrtbz**2)**2.5*sqrtbz**3
+        return term1*term2/term3
+
+    def _parse_params(self, params):
+        '''_parse_params:
+
+        Parse the parameters of the density profile.
+
+        Args:
+            params (list): List of parameters for the density profile, see
+                class docstring.
+        
+        Returns:
+            params (list): List of parameters for the density profile, see
+                class docstring.
+        '''
+        if len(params) == 2:
+            a, b = params
+            amp = 1.
+        elif len(params) == 3:
+            a, b, amp = params
+        else:
+            raise ValueError("params must have length 2 or 3")
+        if isinstance(a, apu.Quantity):
+            a = a.to(apu.kpc).value
+        if isinstance(b, apu.Quantity):
+            b = b.to(apu.kpc).value
+        if isinstance(amp, apu.Quantity):
+            amp = amp.to(apu.Msun).value
+        return a, b, amp
+
+    def Rforce(self, R, z, params):
+        '''zforce:
+
+        Calculate the Radial force of the density profile.
+
+        Args:
+            R, z (array): Arrays of galactocentric cylindrical radius 
+                and height above the x-y plane. Can be astropy quantities.
+            params (list): List of parameters for the density profile, see
+                class docstring.
+        '''
+        R, _, z = self._parse_R_phi_z_input(R, 0., z)
+        a, b, amp = self._parse_params(params)
+        sqrtbz = np.sqrt(b**2.0 + z**2.0)
+        asqrtbz = a + sqrtbz
+        return -amp*(R)/((asqrtbz**2 + R**2)**1.5)
+
+    def zforce(self, R, z, params):
+        '''zforce:
+
+        Calculate the vertical force of the density profile.
+
+        Args:
+            R, z (array): Arrays of galactocentric cylindrical radius 
+                and height above the x-y plane. Can be astropy quantities.
+            params (list): List of parameters for the density profile, see
+                class docstring.
+        '''
+        R, _, z = self._parse_R_phi_z_input(R, 0., z)
+        a, b, amp = self._parse_params(params)
+        sqrtbz = np.sqrt(b**2.0 + z**2.0)
+        asqrtbz = a + sqrtbz
+        return -amp*(z*asqrtbz)/(sqrtbz*(asqrtbz**2 + R**2)**1.5)
+
+    def mass(self, R, params, z=np.inf, integrate=False):
+        '''mass:
+        
+        Calculate the enclosed mass of the density profile. z can be optionally 
+        provided to calculate the slab mass, otherwise the mass is calculated 
+        as if z is integrated from -inf to inf.
+        
+        Args:
+            R (array): Array of galactocentric cylindrical radii in kpc
+            params (list): List of parameters for the density profile, see
+                class docstring.
+            z (array): Array of heights above the x-y plane in kpc, if None 
+                then integrate from -inf to inf. [default: None] 
+        '''
+
+        if isinstance(R, apu.Quantity):
+            R = R.to(apu.kpc).value
+        if isinstance(z, apu.Quantity):
+            z = z.to(apu.kpc).value
+        a, b, amp = self._parse_params(params)
+        if integrate:
+            if isinstance(R, (np.ndarray,list)):
+                out = np.zeros_like(R)
+                if not isinstance(z, (np.ndarray,list)):
+                    z = np.ones_like(R)*z
+                for i in range(len(R)):
+                    out[i] = self.mass(R[i], params, z=z[i], integrate=True)
+                return out
+            if z is None:  # Within spherical shell
+                raise NotImplementedError
+                # def _integrand(theta):
+                #     tz = R * np.cos(theta)
+                #     tR = R * np.sin(theta)
+                #     return self.rforce(tR, tz)*np.sin(theta)
+                # return -(R**2.0)*scipy.integrate.quad(_integrand, 0.0, np.pi)[0]/2.0
+            else:  # Within disk at <R, -z --> z
+                if np.isinf(z):
+                    _z = 10000*b
+                else:
+                    _z = z
+                Rfunc = lambda x: self.Rforce(R, x, params=params)
+                Rterm = -R*scipy.integrate.quad(Rfunc, -_z, _z)[0]/2.0
+                zfunc = lambda x: self.zforce(x, _z, params=params)
+                zterm = scipy.integrate.quad(zfunc, 0.0, R)[0]
+                return Rterm + zterm
+        else:
+            raise NotImplementedError
 
 # ----------------------------------------------------------------------------
 
