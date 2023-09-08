@@ -765,6 +765,9 @@ class TreeInfo(object):
         if mw_analog_dir[-1] != '/': mw_analog_dir += '/'
         if subfind_id is None:
             if hasattr(self,'subfind_id') and hasattr(self,'snapnum'):
+                if snapnum not in self.snapnum:
+                    raise FileNotFoundError('No cutout file for snapshot '
+                        +str(snapnum))
                 subfind_id = self.subfind_id[self.snapnum==snapnum][0]
             else:
                 raise ValueError('Must provide either subfind_id or have '
