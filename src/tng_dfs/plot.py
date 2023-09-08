@@ -17,9 +17,12 @@ import numpy as np
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 import matplotlib
+import warnings
 from galpy import potential
 from astropy import units as apu
 import scipy.stats
+import scipy.signal
+import sklearn.mixture
 
 from . import util as putil
 from . import kinematics as pkin
@@ -604,6 +607,261 @@ def plot_merger_scheme_comparison(data_1,data_2,plot_mlpids=False,
     ax5.tick_params(labelleft=False)
 
     return fig,[ax1,ax2,ax3,ax4,ax5]
+
+def plot_jeans_diagnostics2(Js,rs,qs,J1=None,J2=None,adf=None,r_range=None,
+    samp_r_range=[0.,1e10]):
+    '''plot_jeans_diagnostics2:
+    
+    Plot many quantities related to the Jeans equations. Improved to include 
+    comparisons for all quantities, along with J1 and J2
+
+    Args:
+        Js (array) - Array of Jeans equation terms, shape len(rs)
+        rs (array) - Radii of bin centers where Js were calculated
+        qs (array) - List of kinematic quantities from 
+            kinematics.calculate_spherical_jeans_quantities()
+        J1,J2 (arrays) - Individual components of J, each shape len(rs)
+        adf (galpy.df object) - Distribution function representing the sample 
+            being plotted. Will be used to plot force, velocity dispersions, 
+            density profile for comparison.
+        r_range (list) - Radial range for plotting, default None
+        samp_r_range (list) - Radial range over which samples were drawn. Will 
+            only be considered if adf is not None, and will be used to 
+            correctly normalize densities [default: [0,1e10], i.e. 0 to infty]
+    
+    Returns:
+        fig (matplotlib figure) - Figure
+        axs (array of matplotlib axes) - Axes
+    '''
+    plot_jeans_sigmas = True 
+    data_color = 'Black'
+    data_linewidth = 2.
+    truth_linewidth = 1.
+    truth_color = 'Red'
+    
+    _has_adf = adf is not None
+    if _has_adf:
+        assert samp_r_range is not None
+        pot = adf._pot
+        denspot = adf._denspot
+    else:
+        plot_jeans_sigmas = False
+
+    percfunc =  lambda x: np.percentile(np.atleast_2d(x), [16,50,84], axis=0)
+
+    # Figure and axs (row,col)
+    _has_J_terms = not (J1 is None or J2 is None)
+    if _has_J_terms:
+        fig = plt.figure(figsize=(16,12))
+        axs = fig.subplots(nrows=4,ncols=4)
+    else:
+        fig = plt.figure(figsize=(12,12))
+        axs = fig.subplots(nrows=4,ncols=3)
+    
+    # J in the first column, first panel
+    lJ,mJ,uJ = percfunc(Js)
+    axs[0,0].plot(rs, mJ, color=data_color, linewidth=data_linewidth)
+    axs[0,0].fill_between(rs, lJ, uJ, color='Black', alpha=0.25)
+    axs[0,0].axhline(0, color='Black', linestyle='--', linewidth=0.5)
+    # Assume that J is normalized
+    axs[0,0].set_ylabel(r'$J / (\nu \bar{v_{r}^{2}} / r)$')
+
+    # Beta in the first column, second panel
+    beta = 1 - (qs[4]+qs[5])/(2*qs[3])
+    lbeta,mbeta,ubeta = percfunc(beta)
+    axs[1,0].plot(rs, mbeta, color=data_color, linewidth=data_linewidth)
+    axs[1,0].fill_between(rs, ubeta, lbeta, color='Black', alpha=0.25)
+    # axs[1,0].axhline(0, color='Black', linestyle='--', linewidth=0.5)
+    axs[1,0].set_ylabel(r'$\beta$')
+
+    # Density in the second column, first panel
+    lnu,mnu,unu = percfunc(qs[2])
+    axs[0,1].plot(rs, mnu, color=data_color, linewidth=data_linewidth)
+    if _has_adf:
+        denspot_dens = potential.evaluateDensities(denspot,rs*apu.kpc,0)
+        denspot_norm = potential.mass(denspot,samp_r_range[1]*apu.kpc)-\
+                       potential.mass(denspot,samp_r_range[0]*apu.kpc)
+        denspot_dens = (denspot_dens/(denspot_norm)).to(apu.kpc**-3).value
+        axs[0,1].plot(rs, denspot_dens,#*mnu[0]/denspot_dens[0], 
+            color=truth_color, linewidth=truth_linewidth, linestyle='--')
+    axs[0,1].fill_between(rs, unu, lnu, color='Black', alpha=0.25)
+    axs[0,1].set_xscale('log')
+    axs[0,1].set_yscale('log')
+    axs[0,1].set_ylabel(r'$\nu$')
+
+    # Delta density in the second column, second panel
+    if _has_adf:
+        # dnu = (qs[2] - denspot_dens*mnu[0]/denspot_dens[0])/(denspot_dens*mnu[0]/denspot_dens[0])
+        dnu = (qs[2]-denspot_dens)/denspot_dens
+        ldnu,mdnu,udnu = percfunc(dnu)
+        axs[1,1].plot(rs, mdnu, color=data_color, linewidth=data_linewidth)
+        axs[1,1].fill_between(rs, udnu, ldnu, color='Black', alpha=0.25)
+        axs[1,1].axhline(0, color='Black', linestyle='--', linewidth=0.5)
+        axs[1,1].set_xscale('log')
+        axs[1,1].set_ylabel(r'$\Delta \nu$ [fractional]')
+    else:
+        axs[1,1].annotate('No DF for comparison', xy=(0.5,0.5), 
+            xycoords='axes fraction', ha='center', va='center', fontsize=16)
+    
+    # dphi/dr in the third column, first panel
+    ldphidr,mdphidr,udphidr = percfunc(qs[1])
+    axs[0,2].plot(rs, mdphidr, color=data_color, linewidth=data_linewidth)
+    axs[0,2].fill_between(rs, udphidr, ldphidr, color='Black', alpha=0.25)
+    if _has_adf:
+        pot_negpf = -potential.evaluaterforces(pot,rs*apu.kpc,0).\
+            to(apu.km**2/apu.s**2/apu.kpc).value
+        axs[0,2].plot(rs, pot_negpf, color=truth_color, linestyle='--')
+    axs[0,2].set_ylabel(r'$\mathrm{d}\Phi/\mathrm{d}r$')
+    axs[0,2].set_yscale('log')
+
+    # Delta dphi/dr density in the third column, second panel
+    if _has_adf:
+        ddphidr = (qs[1]-pot_negpf)/pot_negpf
+        lddphidr,mddphidr,uddphidr = percfunc(ddphidr)
+        axs[1,2].plot(rs, mddphidr, color=data_color, linewidth=data_linewidth)
+        axs[1,2].fill_between(rs, uddphidr, lddphidr, color='Black', alpha=0.25)
+        axs[1,2].axhline(0, color='Black', linestyle='--', linewidth=0.5)
+        axs[1,2].set_xscale('log')
+        axs[1,2].set_ylabel(r'$\Delta \mathrm{d}\Phi/\mathrm{d}r$ [fractional]')
+    else:
+        axs[1,2].annotate('No DF for comparison', xy=(0.5,0.5), 
+            xycoords='axes fraction', ha='center', va='center', fontsize=16)
+    
+    # Velocity dispersions in the 3rd row, 1st through 3rd columns
+    colors = ['DodgerBlue','Crimson','DarkOrange']
+    v2_names = [r'$\bar{v_{r}^{2}}$',
+                r'$\bar{v_{\phi}^{2}}$',
+                r'$\bar{v_{\theta}^{2}}$',]
+    for i in range(3):
+        for j in range(3):
+            lv2,mv2,uv2 = percfunc(qs[j+3])
+            if i == j:
+                axs[2,i].plot(rs, mv2, color=colors[j], 
+                    linewidth=data_linewidth+2, zorder=2)
+                axs[2,i].fill_between(rs, uv2, lv2, color=colors[i], alpha=0.25, 
+                    zorder=1)
+                if plot_jeans_sigmas:
+                    mom = [0]*len(rs)
+                    for k in range(len(rs)):
+                        if i == 0:
+                            mom[k] = adf.vmomentdensity(rs[k]*apu.kpc,2,0)
+                        elif i in [1,2]:
+                            mom[k] = adf.vmomentdensity(rs[k]*apu.kpc,0,2)/2
+                        mom[k] /= adf.vmomentdensity(rs[k]*apu.kpc,0,0)
+                        mom[k] = mom[k].to_value(apu.km**2/apu.s**2)
+                    mom = np.asarray(mom)
+                    axs[2,i].plot(rs, mom, color='Black', alpha=1.,
+                        linestyle='--', linewidth=1., zorder=3)
+            else:
+                axs[2,i].plot(rs, mv2, color=colors[j], alpha=1., 
+                    linestyle='--', linewidth=1., zorder=3)
+        axs[2,i].set_ylabel(v2_names[i])
+        axs[2,i].set_yscale('log')
+
+    # Velocity dispersion deltas in the 4th row, 1st through 3rd columns
+    colors = ['DodgerBlue','Crimson','DarkOrange']
+    v2_names = [r'$\bar{v_{r}^{2}}$',
+                r'$\bar{v_{\phi}^{2}}$',
+                r'$\bar{v_{\theta}^{2}}$',]
+    for i in range(3):
+        if plot_jeans_sigmas:
+            mom = [0]*len(rs)
+            for j in range(len(rs)):
+                if i == 0:
+                    mom[j] = adf.vmomentdensity(rs[j]*apu.kpc,2,0)
+                elif i in [1,2]:
+                    mom[j] = adf.vmomentdensity(rs[j]*apu.kpc,0,2)/2
+                mom[j] /= adf.vmomentdensity(rs[j]*apu.kpc,0,0)
+                mom[j] = mom[j].to_value(apu.km**2/apu.s**2)
+            mom = np.asarray(mom)
+            dv2 = (qs[i+3]-mom)/mom
+            ldv2,mdv2,udv2 = percfunc(dv2)
+            axs[3,i].plot(rs, mdv2, color=data_color, linewidth=data_linewidth)
+            axs[3,i].fill_between(rs, udv2, ldv2, color='Black', alpha=0.25)
+            axs[3,i].axhline(0, color='Black', linestyle='--', linewidth=0.5)
+            axs[3,i].set_ylabel(r'$\Delta$'+v2_names[i]+' [fractional]')
+        else:
+            axs[3,i].annotate('No DF for comparison', xy=(0.5,0.5), 
+                xycoords='axes fraction', ha='center', va='center', fontsize=16)
+    
+    # J1 and J2 as well as their deltas in the 4th column
+    if _has_J_terms:
+        J_terms = [J1,J2]
+        for i in range(2):
+            for j in range(2):
+                lJ,mJ,uJ = percfunc(J_terms[j])
+                if i == j:
+                    axs[int(2*i),3].plot(rs, mJ, color='Black', 
+                        linewidth=data_linewidth, zorder=2)
+                    axs[int(2*i),3].fill_between(rs, uJ, lJ, color='Black',
+                        alpha=0.25, zorder=1)
+                else:
+                    axs[int(2*i),3].plot(rs, -mJ, color='DodgerBlue', 
+                        alpha=1.0, linestyle='--', linewidth=1., zorder=3)
+            axs[int(2*i),3].set_ylabel(r'$J_{'+str(i+1)+'}$')
+        if _has_adf:
+            _rs = np.linspace(0.,max(rs)*1.1,100)
+            # Mean square velocities
+            mv2s = np.zeros((3,len(_rs)))
+            for i in range(3):
+                _mv2 = [0]*len(_rs)
+                for j in range(len(_rs)):
+                    if i == 0:
+                        _mv2[j] = adf.vmomentdensity(_rs[j]*apu.kpc,2,0)
+                    elif i in [1,2]:
+                        _mv2[j] = adf.vmomentdensity(_rs[j]*apu.kpc,0,2)/2
+                    _mv2[j] /= adf.vmomentdensity(_rs[j]*apu.kpc,0,0)
+                    _mv2[j] = _mv2[j].to_value(apu.km**2/apu.s**2)
+                mv2s[i] = np.asarray(_mv2)
+            nu = potential.evaluateDensities(denspot,_rs*apu.kpc,0)
+            nu_norm = potential.mass(denspot,samp_r_range[1]*apu.kpc)-\
+                potential.mass(denspot,samp_r_range[0]*apu.kpc)
+            nu = (nu/(nu_norm)).to(apu.kpc**-3).value
+            dphidr = -potential.evaluaterforces(pot,_rs*apu.kpc,0).\
+                to(apu.km**2/apu.s**2/apu.kpc).value
+            dnuvr2dr = np.diff(nu*mv2s[0]) / np.diff(_rs)
+            _rs_i = (_rs[1:]+_rs[:-1])/2
+            nu_i = (nu[1:]+nu[:-1])/2
+            dphidr_i = (dphidr[1:]+dphidr[:-1])/2
+            mv2s_i = (mv2s[:,1:]+mv2s[:,:-1])/2
+            J1_analytic = dnuvr2dr
+            J2_analytic = nu_i*(dphidr_i + (2*mv2s_i[0]-mv2s_i[1]-mv2s_i[2])/_rs_i)
+            Jnorm_analytic = nu_i*mv2s_i[0]/_rs_i
+            J1_analytic /= Jnorm_analytic
+            J2_analytic /= Jnorm_analytic
+            # Interpolators so we can compute the data on the supplied rs grid
+            J1_interp = scipy.interpolate.interp1d(_rs_i,J1_analytic,kind='linear')
+            J2_interp = scipy.interpolate.interp1d(_rs_i,J2_analytic,kind='linear')
+            Js_analytic = [J1_analytic,J2_analytic]
+            Js_interp = [J1_interp,J2_interp]
+            for i in range(2):
+                mask = (_rs_i >= np.min(rs)) & (_rs_i <= np.max(rs))
+                axs[int(2*i),3].plot(_rs_i[mask], Js_analytic[i][mask], 
+                    color='Red', linewidth=data_linewidth, linestyle='dashed')
+            for i in range(2):
+                _J_analytic = Js_interp[i](rs)
+                dJ = (J_terms[i]-_J_analytic)/_J_analytic
+                ldJ,mdJ,udJ = percfunc(dJ)
+                axs[int(2*i)+1,3].plot(rs, mdJ, color=data_color,
+                    linewidth=data_linewidth)
+                axs[int(2*i)+1,3].fill_between(rs, udJ, ldJ, color='Black',
+                    alpha=0.25)
+                axs[int(2*i)+1,3].axhline(0, color='Black', linestyle='--',
+                    linewidth=0.5)
+                axs[int(2*i)+1,3].set_ylabel(r'$\Delta J_{'+str(i+1)+'}$ [fractional]')                
+        else:
+            for i in range(2):
+                axs[int(2*i)+1,3].annotate('No DF for comparison', xy=(0.5,0.5), 
+                    xycoords='axes fraction', ha='center', va='center', 
+                    fontsize=16)
+
+    # Set limits and x labels all at once:
+    if r_range is not None:
+        ax.set_xlabel(r'r [kpc]')
+        for ax in axs.flatten():
+            ax.set_xlim(r_range[0],r_range[1])
+
+    return fig,axs
 
 def plot_jeans_diagnostics(Js,rs,qs,adf=None,r_range=None):
     '''plot_jeans_diagnostics:
