@@ -15,7 +15,7 @@ __author__ = "James Lane"
 ### Imports
 import numpy as np
 import copy
-from galpy import potential
+from galpy import potential,orbit
 import astropy.units as apu
 
 from . import util as putil
@@ -95,6 +95,7 @@ def calculate_spherical_jeans_quantities(orbs,pot=None,pe=None,r_range=[0,100],
     vr2 = np.zeros_like(bin_cents)
     vt2 = np.zeros_like(bin_cents)
     vp2 = np.zeros_like(bin_cents)
+    mean_r = np.zeros_like(bin_cents)
 
     # Handle potential energy
     rs = orbs.r(use_physical=True).to(apu.kpc).value
@@ -134,6 +135,7 @@ def calculate_spherical_jeans_quantities(orbs,pot=None,pe=None,r_range=[0,100],
             [bin_mask]**2.)
         vt2[i] = np.mean(orbs.vT(use_physical=True).to(apu.km/apu.s).value
             [bin_mask]**2.)
+        mean_r[i] = np.mean(rs[bin_mask])
     
     # Normalize densities by number of orbits so they're proper number 
     # densities
@@ -201,7 +203,7 @@ def calculate_spherical_jeans(orbs,pot=None,pe=None,n_bootstrap=1,
         for i in range(n_bootstrap):
             # Random bootstrap index
             indx = np.random.choice(np.arange(len(orbs),dtype=int),
-                size=len(orbs)-1,replace=True)
+                size=len(orbs),replace=True)
             if pe is not None:
                 _pe = pe[indx]
             else:
@@ -241,7 +243,8 @@ def calculate_spherical_jeans(orbs,pot=None,pe=None,n_bootstrap=1,
         else:
             return J,rs
     
-def calculate_weighted_average_J(J,rs,dens=None,qs=None,weights=None):
+def calculate_weighted_average_J(J,rs,dens=None,qs=None,weights=None,
+    handle_nans=False):
     '''calculate_weighted_average_J:
 
     Calculate the weighted average of the Jeans equation residual term + the 
@@ -259,6 +262,8 @@ def calculate_weighted_average_J(J,rs,dens=None,qs=None,weights=None):
             in order: dnuvr2dr,dphidr,nu,vr2,vp2,vt2,rs [default: None]
         weights (optional, np.ndarray) - Weights to use in calculating the
             weighted average [default: None]
+        handle_nans (optional, bool) - If True, will handle nans in the Jeans
+            equation by setting them to zero [default: False]
     
     Returns:
         J_avg (float) - Weighted average of the Jeans equation residual term
