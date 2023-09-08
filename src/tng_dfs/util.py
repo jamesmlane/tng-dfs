@@ -195,7 +195,10 @@ def prepare_mwsubs(mw_analog_dir,h=0.7,mw_mass_range=[5,7],return_vars=False,
 
     # Query the API for subhalos with stellar mass in a range near that of the 
     # Milky Way
-    mw_mass_range = np.array([5,7])*1e10
+    # mw_mass_range = np.array([5,7])*1e10
+    mw_mass_range = np.asarray(mw_mass_range)
+    if np.all(mw_mass_range > 1e5): raise ValueError('mw_mass_range probably not in units of 1e10')
+    mw_mass_range *= 1e10
     mw_mass_range_code = mass_physical_to_code(mw_mass_range,h=h,e10=True)
     mw_search_query = '?mass_stars__gt='+str(mw_mass_range_code[0])+\
                         '&mass_stars__lt='+str(mw_mass_range_code[1])+\
