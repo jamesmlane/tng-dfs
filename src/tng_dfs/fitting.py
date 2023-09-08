@@ -16,10 +16,310 @@ __author__ = "James Lane"
 import numpy as np
 from . import densprofile as pdens
 import scipy.stats
+import multiprocessing
+import emcee
+import time
+from . import util as putil
 
 # ----------------------------------------------------------------------------
 
-# Classes to hold information about fitting
+### Classes to hold information about fitting
+
+# Super class
+
+class Fit():
+    '''Fit:
+
+    Super class for all fitting information classes
+    '''
+    def __init__(self, *args, **kwargs):
+        '''__init__:
+
+        Initialize a Fit object
+        '''
+        if len(args) > 0:
+            raise ValueError('Fit class does not take positional arguments')
+        
+        # Parameters set through kwargs
+        self.nprocs = kwargs.get('nprocs', 1)
+        self.nwalkers = kwargs.get('nwalkers', 100)
+        self.nit = kwargs.get('nit', 1000)
+        self.ncut = kwargs.get('ncut', 100)
+        self.mcmc_progress = kwargs.get('mcmc_progress', True)
+        self.opt_init = kwargs.get('opt_init', True)
+        self.minimize_method = kwargs.get('minimize_method', 'Powell')
+
+        # Parameters which will be set later
+        self.chain = None
+        self.sampler = None
+        self.opt = None
+    
+    def _mcmc(self, loglike, init, loglike_args=[], loglike_kwargs={}):
+        '''_mcmc:
+
+        Run an MCMC fit in a manner common to all fits
+
+        Args:
+
+        Returns:
+            chain (array): Array representing the MCMC chain
+            sampler (emcee.EnsembleSampler): EnsembleSampler object
+        '''
+        # Parameters
+        nparam = len(init)
+        nwalkers = self.nwalkers
+        nit = self.nit
+        ncut = self.ncut
+        progress = self.mcmc_progress
+        usr_log_prior = self.usr_log_prior
+        usr_log_prior_params = self.usr_log_prior_params
+        
+        def llfunc(params):
+            '''llfunc:
+
+            Log likelihood function for emcee which takes only the parameters
+            '''
+            return loglike(params, *loglike_args, **loglike_kwargs)
+        
+        # Optimize if desired
+        if self.opt_init:
+            res = self._minimize(loglike, init, loglike_args=loglike_args,
+                loglike_kwargs=loglike_kwargs)
+            init = res.x
+
+        # Initialize the walkers
+        init = np.asarray(init)
+        mcmc_init = [init+1e-2*np.random.randn(nparam) for i in range(nwalkers)]
+        t1 = time.time()
+        with multiprocessing.Pool(processes=self.nprocs) as pool:
+            sampler = emcee.EnsembleSampler(nwalkers, nparam,
+                llfunc, pool=pool)
+            sampler.run_mcmc(mcmc_init, nit, progress=progress)
+        t2 = time.time()
+        
+        # Cut the burn-in
+        chain = sampler.get_chain(discard=ncut, flat=True)
+        self.chain = chain
+        self.sampler = sampler
+
+        return chain, sampler
+
+    def _minimize(self, loglike, init, loglike_args=[], loglike_kwargs={}):
+        '''_minimize:
+
+        Run a minimization fit in a manner common to all fits
+
+        Args:
+
+        Returns:
+            res (scipy.optimize.OptimizeResult): OptimizeResult object
+        '''
+        def llfunc(params):
+            '''llfunc:
+
+            Log likelihood function for minimize which takes only the parameters
+            '''
+            return loglike(params, *loglike_args, **loglike_kwargs)
+        res = scipy.optimize.minimize(llfunc, init, method='Nelder-Mead')
+        self.opt = res
+        return res
+
+# Density profile fits
+
+class DensityProfileFit(Fit):
+    '''DensityProfileFit:
+
+    Class to hold information about a density profile fit
+    '''
+    def __init__(self, densfunc, **kwargs):
+        '''__init__:
+
+        Initialize a DensityProfileFit object
+
+        Args:
+            densfunc (function): Function that returns the density profile. 
+                Must be a DensityProfile object. Call signature is 
+                densfunc(R, phi, z, params)
+            usr_log_prior (function): Function that returns the log prior
+                supplied by the user. Call signature is 
+                usr_log_prior(densfunc, params, *usr_log_prior_params)
+            
+            
+        '''
+        super(DensityProfileFit,self).__init__([], **kwargs)
+        if not isinstance(densfunc, pdens.DensityProfile):
+            raise ValueError('densfunc must be a DensityProfile object')
+        self.densfunc = densfunc
+        self.usr_log_prior = kwargs.get('usr_log_prior', None)
+        self.usr_log_prior_params = kwargs.get('usr_log_prior_params', [])
+        self.effvol_params = kwargs.get('effvol_params', [])
+        self.parts = kwargs.get('parts', False)
+        self.n_params = densfunc.n_params
+        self.n_hyperparams = 0
+
+    def mcmc(self, init, R, phi, z, mass=None):
+        '''mcmc:
+
+        Use MCMC to fit a density profile. A wrapper for the Fit._mcmc method 
+        specific to the likelihood framework for density profiles.
+
+        Args:
+            init (list): List of initial parameters for the density profile
+            R, phi, z (array): Arrays of galactocentric cylindrical coordinates
+                can be astropy quantities.
+            mass (float): Mass of the tracer population. If None, the mass is
+                set to 1. Can be an astropy quantity.
+        
+        Returns:
+            chain (array): Array representing the MCMC chain
+            sampler (emcee.EnsembleSampler): EnsembleSampler object
+        '''
+        R = putil.parse_astropy_quantity(R, 'kpc')
+        phi = putil.parse_astropy_quantity(phi, 'rad')
+        z = putil.parse_astropy_quantity(z, 'kpc')
+        mass = putil.parse_astropy_quantity(mass, 'Msun')
+        chain, sampler = self._mcmc(loglike_dens, init,
+            loglike_args=[self.densfunc, R, phi, z],
+            loglike_kwargs={'mass':mass,
+                            'usr_log_prior':self.usr_log_prior,
+                            'usr_log_prior_params':self.usr_log_prior_params,
+                            'effvol_params':self.effvol_params,
+                            'parts':self.parts})
+        
+        return chain, sampler
+    
+    def minimize(self, init, R, phi, z, mass=None, **kwargs):
+        '''minimize:
+
+        Use minimization to fit a density profile. A wrapper for the 
+        Fit._minimize method specific to the likelihood framework for density 
+        profiles.
+
+        Args:
+            R, phi, z (array): Arrays of galactocentric cylindrical coordinates
+                can be astropy quantities.
+            mass (float): Mass of the tracer population. If None, the mass is
+                set to 1. Can be an astropy quantity.
+        
+        Returns:
+            res (scipy.optimize.OptimizeResult): OptimizeResult object
+        '''
+        R = putil.parse_astropy_quantity(R, 'kpc')
+        phi = putil.parse_astropy_quantity(phi, 'rad')
+        z = putil.parse_astropy_quantity(z, 'kpc')
+        mass = putil.parse_astropy_quantity(mass, 'Msun')
+        res = self._minimize(mloglike_dens, init,
+            loglike_args=[self.densfunc, R, phi, z],
+            loglike_kwargs={'mass':mass,
+                            'usr_log_prior':self.usr_log_prior,
+                            'usr_log_prior_params':self.usr_log_prior_params,
+                            'effvol_params':self.effvol_params,
+                            'parts':self.parts})
+        
+        return res
+
+# Binned density profile fits
+
+class BinnedDensityProfileFit(Fit):
+    '''BinnedDensityProfileFit:
+
+    Class to hold information about a binned density profile fit
+    '''
+    def __init__(self, densfunc, **kwargs):
+        '''__init__:
+
+        Initialize a BinnedDensityProfileFit object
+        '''
+        super(BinnedDensityProfileFit,self).__init__()
+        self.densfunc = densfunc
+        if not isinstance(densfunc, pdens.DensityProfile):
+            raise ValueError('densfunc must be a DensityProfile object')
+        self.densfunc = densfunc
+        self.usr_log_prior = kwargs.get('usr_log_prior', None)
+        self.usr_log_prior_params = kwargs.get('usr_log_prior_params', [])
+        self.effvol_params = kwargs.get('effvol_params', [])
+        self.parts = kwargs.get('parts', False)
+        self.marginalize_hyperparams = kwargs.get('marginalize_hyperparams',
+            False)
+        self.n_params = densfunc.n_params
+        self.n_hyperparams = 1 # Just sigma for the Gaussian likelihood
+    
+    def mcmc(self, init, r, rho):
+        '''mcmc:
+
+        Use MCMC to fit a binned density profile. A wrapper for the Fit._mcmc
+        method specific to the likelihood framework for binned density profiles.
+
+        Args:
+            r (array): Array of galactocentric spherical radii where the 
+                density will be calculated for comparison with rho.
+            rho (array): Array of binned density profile, calculated from the 
+                data.
+        
+        Returns:
+            chain (array): Array representing the MCMC chain
+            sampler (emcee.EnsembleSampler): EnsembleSampler object
+        '''
+        # Insert hyperparameter into init if not already there.
+        if len(init) == self.n_params or len(init) == self.n_params-1:
+            init.append(1.)
+        r = putil.parse_astropy_quantity(r, 'kpc')
+        rho = putil.parse_astropy_quantity(rho, 'Msun/kpc^3')
+        chain, sampler = self._mcmc(loglike_binned_dens, init,
+            loglike_args=[self.densfunc, r, rho],
+            loglike_kwargs={'usr_log_prior':self.usr_log_prior,
+                            'usr_log_prior_params':self.usr_log_prior_params,
+                            'effvol_params':self.effvol_params,
+                            'parts':self.parts})
+        if self.marginalize_hyperparams:
+            chain = chain[:,:-int(self.n_hyperparams)]
+        return chain, sampler
+    
+    def minimize(self, init, r, rho, **kwargs):
+        '''minimize:
+
+        Use minimization to fit a binned density profile. A wrapper for the 
+        Fit._minimize method specific to the likelihood framework for binned 
+        density profiles.
+
+        Args:
+            r (array): Array of galactocentric spherical radii where the 
+                density will be calculated for comparison with rho.
+            rho (array): Array of binned density profile, calculated from the 
+                data.
+        
+        Returns:
+            res (scipy.optimize.OptimizeResult): OptimizeResult object
+        '''
+        # Insert hyperparameter into init if not already there.
+        if len(init) == self.n_params or len(init) == self.n_params-1:
+            init.append(1.)
+        r = putil.parse_astropy_quantity(r, 'kpc')
+        rho = putil.parse_astropy_quantity(rho, 'Msun/kpc^3')
+        res = self._minimize(mloglike_binned_dens, init,
+            loglike_args=[self.densfunc, r, rho],
+            loglike_kwargs={'usr_log_prior':self.usr_log_prior,
+                            'usr_log_prior_params':self.usr_log_prior_params,
+                            'effvol_params':self.effvol_params,
+                            'parts':self.parts})
+        if self.marginalize_hyperparams:
+            res.x = res.x[:-int(self.n_hyperparams)]
+        return res
+
+# Distribution function fits
+
+class DistributionFunctionFit(Fit):
+    '''DistributionFunctionFit:
+
+    Class to hold information about a distribution function fit
+    '''
+    def __init__(self):
+        '''__init__:
+
+        Initialize a DistributionFunctionFit object
+        '''
+        super(DistributionFunctionFit,self).__init__()
+
 
 # ----------------------------------------------------------------------------
 
