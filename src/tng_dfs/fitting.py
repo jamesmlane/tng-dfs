@@ -536,14 +536,18 @@ def loglike_binned_dens(params, densfunc, r, rho, usr_log_prior=None,
     usr_log_prior_params=None, parts=False):
     '''loglike_binned_dens:
     
-    Log likelihood function for fitting a binned density profile
-    
+    Log likelihood function for fitting a binned density profile. Currently, 
+    uses a modified Gaussian likelihood that is the negative sum of the squared
+    differences between the log of the density profile and the 
+    log of the binned density profile.
 
     Args:
-        params (list): List of parameters for the density profile
+        params (list): List of parameters for the density profile + 
+            hyperparameters for the Gaussian likelihood (sigma,)
         densfunc (function): Function that returns the density profile
         r (array): Array of galactocentric spherical radii
-        rho (array): Array of binned density profile
+        rho (array): Array of binned density profile, calculated from the 
+            data.
         usr_log_prior (function): Function that returns the log prior
             supplied by the user. Call signature is
             usr_log_prior(densfunc, params, *usr_log_prior_params)
