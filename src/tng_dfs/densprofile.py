@@ -475,7 +475,132 @@ class DoubleBrokenPowerLawSpherical(SphericalDensityProfile):
                 _int -= r1norm*r2norm*r2**(3-alpha3)/(3-alpha3)
             return 4*np.pi*amp*_int
 
+
+# ----------------------------------------------------------------------------
+
+### Composite density profiles
+
+class CompositeDensityProfile(DensityProfile):
+    '''CompositeDensityProfile:
+
+    Class to contain and handle more than one density profile.
+
+    Args:
+        densprofiles (list): List of density profiles to be contained in the 
+            composite density profile. Should be instance of 
+            DensityProfile() or one of its subclasses.
+    '''
+
+    def __init__(self, densprofiles):
+        '''__init__:
+
+        Initialize the composite density profile.
+        '''
+        super(CompositeDensityProfile, self).__init__()
+        self.densprofiles = densprofiles
+        self.n_densprofiles = len(densprofiles)
+        self.n_params = np.sum([dens.n_params for dens in densprofiles])
+        self.param_names = []
+        for dens in densprofiles:
+            self.param_names += dens.param_names
     
+    def __call__(self, R, phi, z, params):
+        '''__call__:
+        
+        Evaluate the density profile
+
+        Args:
+            R, phi, z (array): Arrays of galactocentric cylindrical radius, 
+                azimuth, and height above the x-y plane. Can be astropy 
+                quantities.
+            params (list): List of parameters for the density profile, see
+                class docstring.
+        
+        Returns:
+            dens (array): Array of densities in Msun/kpc^3
+        '''
+        R, phi, z = self._parse_R_phi_z_input(R, phi, z)
+        dens = np.zeros_like(R)
+        for i, densprofile in enumerate(self.densprofiles):
+            n_params = densprofile.n_params
+            dens += densprofile(R, phi, z, params[i*n_params:(i+1)*n_params])
+        return dens
+    
+    # def _parse_params(self, params):
+    #     '''_parse_params:
+        
+    #     Parse the parameters of the density profile.
+        
+    #     Args:
+    #         params (list): List of parameters for the density profile, see
+    #             class docstring.
+                
+    #     Returns:
+    #         params (list): List of parameters for the density profile, see
+    #             class docstring.
+    #     '''
+    #     pass
+
+    def mass(self, r, params, zmax=None, integrate=False):
+        '''mass:
+        
+        Calculate the enclosed mass of the density profile. z can be optionally 
+        provided to calculate the slab mass, otherwise the mass is calculated 
+        as if z is integrated from -inf to inf.
+        
+        Args:
+            R (array): Array of galactocentric cylindrical radii in kpc
+            params (list): List of parameters for the density profile, see
+                class docstring.
+            z (array): Array of heights above the x-y plane in kpc, if None 
+                then integrate from -inf to inf. [default: None] 
+        '''
+        mass = 0.
+        for i, densprofile in enumerate(self.densprofiles):
+            n_params = densprofile.n_params
+            if isinstance(densprofile, SphericalDensityProfile):
+                mass += densprofile.mass(r=r, 
+                    params=params[i*n_params:(i+1)*n_params], 
+                    integrate=integrate)
+            if isinstance(densprofile, AxisymmetricDensityProfile):
+                mass += densprofile.mass(R=r, 
+                    params=params[i*n_params:(i+1)*n_params], 
+                    zmax=zmax, integrate=integrate)
+        return mass
+    
+    def effective_volume(self, params, rmin=0., rmax=np.inf, zmax=np.inf, 
+        integrate=False):
+        '''effective_volume:
+
+        Integrate the density profile over all space. This is the effective
+        volume of the density profile.
+
+        Args:
+            params (list): List of parameters for the density profile
+            rmin (float): Minimum radius in kpc [default: 0.]
+            rmax (float): Maximum radius in kpc [default: np.inf]
+            zmax (float): Maximum height above the plane in kpc [default: np.inf]
+        
+        Returns:
+            effvol (float): Effective volume of the density profile
+        '''
+        vol = 0.
+        for i, densprofile in enumerate(self.densprofiles):
+            n_params = densprofile.n_params
+            if isinstance(densprofile, SphericalDensityProfile):
+                _vol = densprofile.effective_volume(
+                    params=params[i*n_params:(i+1)*n_params], 
+                    rmin=rmin, rmax=rmax, integrate=integrate)
+                vol += _vol
+            if isinstance(densprofile, AxisymmetricDensityProfile):
+                _vol = densprofile.effective_volume(
+                    params=params[i*n_params:(i+1)*n_params], 
+                    rmin=rmin, rmax=rmax, zmax=zmax, integrate=integrate)
+                vol += _vol
+        return vol
+
+
+
 # ----------------------------------------------------------------------------
 
 # Sampling routines
