@@ -28,7 +28,8 @@ _ro,_vo = putil.parse_config_dict(_cdict,_keywords)
 
 def calculate_spherical_jeans_quantities(orbs,pot=None,pe=None,r_range=[0,100],
     n_bin=10,norm_by_galpy_scale_units=False,calculate_pe_with_pot=False,
-    t=0.,ro=_ro,vo=_vo):
+    adaptive_binning=False,bin_edge=None,
+    rs_is_bin_mean_r=False,t=0.,ro=_ro,vo=_vo):
     '''calculate_spherical_jeans_quantities:
     
     Calculate the quantities used in the spherical Jeans equation.
@@ -49,6 +50,16 @@ def calculate_spherical_jeans_quantities(orbs,pot=None,pe=None,r_range=[0,100],
         calculate_pe_at_bin_cents (optional, bool) - If True, calculate the 
             potential at the bin centers, rather than the mean potential of the 
             orbs in the bin [default: False]
+        adaptive_binning (optional, bool or dict) - If True/dict, use the 
+            adaptive binning routine in calculating kinematic quantities. If 
+            dict then use as keyword arguments to get_radius_binning
+            [default: False]
+        bin_edge (optional, np.ndarray) - If provided, use these bin edges
+            instead of calculating them (note these will be the bin edges for 
+            the derivative quantities) [default: None]
+        rs_is_bin_mean_r (optional, bool) - If True, use the mean radius of the
+            samples in each bin as the radius for the bin (rs in qs), 
+            otherwise use the bin centers [default: False]
         t (optional, float) - Time at which to calculate the Jeans equation,
             used as an argument to the potential [default: None]
         ro (optional, float) - Distance scale in kpc [default: 8.275]
@@ -77,8 +88,25 @@ def calculate_spherical_jeans_quantities(orbs,pot=None,pe=None,r_range=[0,100],
     ## Determine bins for kinematic properties
     # First need bins for derivatives, one more bin than for the data itself, 
     # since we're taking derivatives
-    n_dr_bin = n_bin+1
-    dr_bin_edge = np.linspace(r_range[0],r_range[1],n_dr_bin+1)
+    if adaptive_binning or isinstance(adaptive_binning,dict):
+        # If adaptive binning is a dictionary, then use that as the keyword
+        # arguments for the adaptive binning routine
+        if isinstance(adaptive_binning,dict):
+            kwargs = adaptive_binning
+        else:
+            kwargs = {}
+        # Get the bins for derivatives
+        dr_bin_edge,_ = get_radius_binning(orbs,**kwargs)
+        n_dr_bin = len(dr_bin_edge)-1
+        n_bin = n_dr_bin-1
+    elif bin_edge is not None:
+        dr_bin_edge = np.asarray(bin_edge)
+        n_dr_bin = len(dr_bin_edge)-1
+        n_bin = n_dr_bin-1
+    else:
+        n_dr_bin = n_bin+1
+        dr_bin_edge = np.linspace(r_range[0],r_range[1],n_dr_bin+1)
+
     dr_bin_cents = (dr_bin_edge[1:]+dr_bin_edge[:-1])/2
     # dr_bin_delta = dr_bin_edge[1:]-dr_bin_edge[:-1]
 
@@ -150,12 +178,19 @@ def calculate_spherical_jeans_quantities(orbs,pot=None,pe=None,r_range=[0,100],
         bin_cents = bin_cents/ro
         dphidr = dphidr*ro/(vo**2)
         dnuvr2dr = dnuvr2dr*(ro**4)/(vo**2)
+    
+    if rs_is_bin_mean_r:
+        rs = mean_r
+    else:
+        rs = bin_cents
 
-    return dnuvr2dr,dphidr,nu,vr2,vp2,vt2,bin_cents
+    return dnuvr2dr,dphidr,nu,vr2,vp2,vt2,rs
 
 def calculate_spherical_jeans(orbs,pot=None,pe=None,n_bootstrap=1,
     r_range=[0,100],n_bin=10,norm_by_galpy_scale_units=False,
-    norm_by_nuvr2_r=True,calculate_pe_with_pot=False,return_kinematics=True,
+    norm_by_nuvr2_r=True,calculate_pe_with_pot=False,
+    adaptive_binning=False,bin_edge=None,
+    rs_is_bin_mean_r=False,return_kinematics=True,
     return_terms=False,t=0.,ro=_ro,vo=_vo):
     '''calculate_spherical_jeans:
 
@@ -181,6 +216,16 @@ def calculate_spherical_jeans(orbs,pot=None,pe=None,n_bootstrap=1,
         calculate_pe_with_pot (optional, bool) - If True, calculate the 
             potential at the bin centers, rather than the mean potential of the 
             orbs in the bin [default: False]
+        adaptive_binning (optional, bool or dict) - If True/dict, use the 
+            adaptive binning routine in calculating kinematic quantities. If 
+            dict then use as keyword arguments to get_radius_binning
+            [default: False]
+        bin_edge (optional, np.ndarray) - If provided, use these bin edges
+            instead of calculating them (note these will be the bin edges for 
+            the derivative quantities) [default: None]
+        rs_is_bin_mean_r (optional, bool) - If True, use the mean radius of the
+            samples in each bin as the radius for the bin (rs in qs), 
+            otherwise use the bin centers [default: False]
         return_kinematics (optional, bool) - If True, return the kinematics
             used to calculate the Jeans equation [default: True]
         return_terms (optional, bool) - If True, return the individual terms
@@ -211,12 +256,17 @@ def calculate_spherical_jeans(orbs,pot=None,pe=None,n_bootstrap=1,
             _qs = calculate_spherical_jeans_quantities(orbs[indx],pot=pot,
                 pe=_pe,r_range=r_range,n_bin=n_bin,
                 norm_by_galpy_scale_units=norm_by_galpy_scale_units,
-                calculate_pe_with_pot=calculate_pe_with_pot,t=t,ro=ro,vo=vo)
+                calculate_pe_with_pot=calculate_pe_with_pot,
+                adaptive_binning=adaptive_binning,bin_edge=bin_edge,
+                rs_is_bin_mean_r=rs_is_bin_mean_r,t=t,ro=ro,vo=vo)
             qs[:,i,:] = _qs
     else:
-        qs = calculate_spherical_jeans_quantities(orbs,pot=pot,pe=pe,r_range=r_range,
-            n_bin=n_bin,norm_by_galpy_scale_units=norm_by_galpy_scale_units,
-            calculate_pe_with_pot=calculate_pe_with_pot,t=t,ro=ro,vo=vo)
+        qs = calculate_spherical_jeans_quantities(orbs,pot=pot,pe=pe,
+            r_range=r_range,n_bin=n_bin,
+            norm_by_galpy_scale_units=norm_by_galpy_scale_units,
+            calculate_pe_with_pot=calculate_pe_with_pot,
+            adaptive_binning=adaptive_binning, bin_edge=bin_edge,
+            rs_is_bin_mean_r=rs_is_bin_mean_r,t=t,ro=ro,vo=vo)
 
     dnuvr2dr,dphidr,nu,vr2,vp2,vt2,rs = qs
 
