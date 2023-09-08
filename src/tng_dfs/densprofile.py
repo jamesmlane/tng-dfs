@@ -675,4 +675,39 @@ def get_virial_radius(r, mass, rho_crit=None, overdensity_factor=200.):
             raise RuntimeError("Binary search failed to converge")
         counter += 1
         
+def get_NFW_init_params(densfunc, r, mass, rho_crit=None, overdensity_factor=200.,
+    conc=10., ):
+    '''get_NFW_init_params:
+
+    Args:
+        densfunc (function): Function that returns the density profile. Should 
+            be NFW
+        r (array): Array of radii in kpc, can be astropy quantity.
+        mass (array): Array of masses in Msun, can be astropy quantity.
+        rho_crit (float): Critical density of the universe in Msun/kpc^3. Can
+            be astropy quantity. If not supplied will be calculated using
+            calculate_critical_density() with default arguments.
+        overdensity_factor (float): Overdensity factor for virial radius 
+            [default: 200.]
+        conc (float): Concentration parameter to use for calculating rs
+            from virial radius. MW approx 10. [default: 10.]
+
+    Returns:
+        init_params (list): List of initial parameters [rs, amp] for the NFW
+            profile
+    '''
+    r = putil.parse_astropy_quantity(r, 'kpc')
+    mass = putil.parse_astropy_quantity(mass, 'Msun')
+
+    # Get the virial radius
+    rvir = get_virial_radius(r, mass, rho_crit=rho_crit,
+        overdensity_factor=overdensity_factor)
+    rvir = putil.parse_astropy_quantity(rvir, 'kpc')
+    rs = rvir/conc
+
+    # Get the amplitude
+    amp = np.sum(mass[r < rvir]) / densfunc.effective_volume([rs,1.],
+        rmin=0., rmax=rvir)
+    
+    return [rs, amp]
 
