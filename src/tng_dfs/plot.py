@@ -1361,3 +1361,433 @@ def plot_dens_vdisp_beta(orbs,E=None,pe=None,fig=None,axs=None):
     fig.tight_layout()
     fig.subplots_adjust(wspace=0.05, hspace=0.05)
     return fig,axs
+
+def plot_E_Enorm_J_Jcirc(orbs,E,Jcirc,plot_hist=True,hist_kwargs=None,
+    img_kwargs=None,plot_contour=False,contour_kwargs=None,plot_scatter=False,
+    scatter_kwargs=None,show_population_lines=True,
+    plot_range=[[-1,0],[-1,1],[0,1]],fig=None,axs=None):
+    '''plot_E_Enorm_J_Jcirc:
+
+    Make the kinematic decomposition figure. First panel is E/Enorm vs Jz/Jcirc,
+    second panel is E/Enorm vs Jp/Jcirc, third panel Jz/Jcirc vs Jp/Jcirc.
+
+    Args:
+        orbs (galpy.orbit.Orbit): Orbit object representing particles
+        E (np.array): Energy of the orbits
+        Jcirc (np.array): Jcirc values for orbits
+        plot_hist (bool): Plot histograms
+        hist_kwargs (dict): Keyword arguments for np.histogram2d
+        img_kwargs (dict): Keyword arguments for ax.imshow
+        plot_contour (bool): Plot contours (plot_hist overrides)
+        contour_kwargs (dict): Keyword arguments for ax.contour
+        plot_scatter (bool): Plot scatter plot (plot_hist or plot_contour 
+            overrides)
+        scatter_kwargs (dict): Keyword arguments for ax.scatter
+        show_population_lines (bool): Show lines dividing kinematic populations
+            in E/Enorm vs Jz/Jcirc plane
+        plot_range (list): List of ranges E/Enorm, Jz/Jcirc, Jp/Jcirc
+        fig (matplotlib.figure.Figure): Figure object to plot on
+        axs (matplotlib.axes.Axes): Axes object to plot on
+
+    Returns:
+        fig,axs (tuple): Matplotlib figure and axes objects
+    '''
+    if fig is None or axs is None:
+        fig = plt.figure(figsize=(15,4))
+        axs = fig.subplots(nrows=1,ncols=3)
+    
+    # Handle plot_hist & plot_scatter
+    if plot_contour and plot_scatter:
+        plot_scatter = False
+        warnings.warn('plot_contour and plot_scatter True, prioritizing plot_contour')
+    if plot_hist and plot_scatter:
+        plot_scatter = False
+        warnings.warn('plot_hist and plot_scatter True, prioritizing plot_hist')
+    if plot_hist and plot_contour:
+        plot_contour = False
+        warnings.warn('plot_hist and plot_contour True, prioritizing plot_hist')
+
+    # Handle empty dictionaries
+    if hist_kwargs is None: hist_kwargs = {}
+    if img_kwargs is None: img_kwargs = {}
+    if contour_kwargs is None: contour_kwargs = {}
+    if scatter_kwargs is None: scatter_kwargs = {}
+
+    # Input default kwargs into hist/img/scatter kwargs
+    if 'range' in hist_kwargs.keys():
+        del hist_kwargs['range']
+        warnings.warn('range kwarg not supported within hist_kwargs, '
+            'use plot_range keyword instead')
+    default_hist_kwargs = dict(bins=20)
+    default_img_kwargs = dict(cmap='Blues', aspect='auto', vmin=2, vmax=5)
+    default_contour_kwargs = dict(levels=3, colors='Black', linewidths=1.)
+    default_scatter_kwargs = dict(s=4, alpha=0.1, facecolor='Black', 
+        edgecolor='None')
+    for key in default_hist_kwargs.keys():
+        if key not in hist_kwargs.keys():
+            hist_kwargs[key] = default_hist_kwargs[key]
+    for key in default_img_kwargs.keys():
+        if key not in img_kwargs.keys():
+            img_kwargs[key] = default_img_kwargs[key]
+    for key in default_contour_kwargs.keys():
+        if key not in contour_kwargs.keys():
+            contour_kwargs[key] = default_contour_kwargs[key]
+    for key in default_scatter_kwargs.keys():
+        if key not in scatter_kwargs.keys():
+            scatter_kwargs[key] = default_scatter_kwargs[key]
+
+    # Calculate angular momenta
+    Jz = orbs.Lz()
+    if isinstance(Jz,apu.Quantity):
+        Jz = Jz.to(apu.kpc*apu.km/apu.s).value
+    J = np.sqrt(np.sum(np.square(orbs.L()),axis=1))
+    if isinstance(J,apu.Quantity):
+        J = J.to(apu.kpc*apu.km/apu.s).value
+    Jp = np.sqrt(J**2 - Jz**2)
+    if isinstance(Jp,apu.Quantity):
+        Jp = Jp.to(apu.kpc*apu.km/apu.s).value
+    
+    # Calculate the plotting quantities
+    if isinstance(E,apu.Quantity):
+        E = E.to(apu.km**2/apu.s**2).value
+    E_Enorm = E/np.abs(E).max()
+    Jz_Jcirc = Jz / Jcirc
+    Jp_Jcirc = Jp / Jcirc
+
+    ## Jz/Jcirc - Enorm
+    xindx = 1
+    yindx = 0
+    hist_kwargs['range'] = [plot_range[xindx],plot_range[yindx]]
+    extent = (plot_range[xindx][0],plot_range[xindx][1],
+              plot_range[yindx][0],plot_range[yindx][1])
+    img_kwargs['extent'] = extent
+    contour_kwargs['extent'] = extent
+    axs[0].set_aspect('auto')
+    if plot_hist:
+        hist,_,_ = np.histogram2d(Jz_Jcirc, E_Enorm, **hist_kwargs)
+        hist = np.ma.masked_where(hist==0,hist)
+        hist = np.log10(np.rot90(hist))
+        im = axs[0].imshow(hist, **img_kwargs)
+        cbar = plt.colorbar(im, ax=axs[0])
+        cbar.set_label('log N')
+    if plot_contour:
+        hist,_,_ = np.histogram2d(Jz_Jcirc, E_Enorm, **hist_kwargs)
+        hist = np.ma.masked_where(hist==0,hist)
+        # hist = np.log10(hist)
+        # hist = np.log10(np.rot90(hist, k=3))
+        hist = np.log10(hist.T)
+        axs[0].contour(hist, **contour_kwargs)
+    if plot_scatter:
+        axs[0].scatter(Jz_Jcirc, E_Enorm, **scatter_kwargs)
+    axs[0].set_xlabel(r'$j_{z}/j_{circ}$', fontsize=16)
+    axs[0].set_ylabel(r'$E/ \vert E_{norm} \vert$', fontsize=16)
+
+    # Add fiducials
+    if show_population_lines:
+        Jz_Jcirc_halo_bound, Jz_Jcirc_disk_bound, Enorm_bulge_bound = \
+            pkin._E_Enorm_Jz_Jcirc_bounds()
+        axs[0].axvline(Jz_Jcirc_halo_bound, color='Black', linestyle='dashed')
+        axs[0].axvline(Jz_Jcirc_disk_bound, color='Black', linestyle='dashed')
+        axs[0].plot([-1,Jz_Jcirc_halo_bound], 
+            [Enorm_bulge_bound,Enorm_bulge_bound], color='Black', 
+            linestyle='dashed')
+        axs[0].annotate('Halo', xy=(0.02,0.95), xycoords='axes fraction', 
+                    fontsize=12)
+        axs[0].annotate('Bulge', xy=(0.02,0.2), xycoords='axes fraction', 
+                        fontsize=12)
+        axs[0].annotate('Thick Disk', xy=(0.77,0.75), xycoords='axes fraction', 
+                    fontsize=12, rotation='vertical')
+        axs[0].annotate('Thin Disk', xy=(0.92,0.75), xycoords='axes fraction', 
+                    fontsize=12, rotation='vertical')
+
+    ## Jp/Jcirc - Enorm
+    xindx = 2
+    yindx = 0
+    hist_kwargs['range'] = [plot_range[xindx],plot_range[yindx]]
+    extent = (plot_range[xindx][0],plot_range[xindx][1],
+              plot_range[yindx][0],plot_range[yindx][1])
+    img_kwargs['extent'] = extent
+    contour_kwargs['extent'] = extent
+    axs[1].set_aspect('auto')
+    if plot_hist:
+        hist,_,_ = np.histogram2d(Jp_Jcirc, E_Enorm, **hist_kwargs)
+        hist = np.ma.masked_where(hist==0,hist)
+        hist = np.log10(np.rot90(hist))
+        im = axs[1].imshow(hist, **img_kwargs)
+        cbar = plt.colorbar(im, ax=axs[1])
+        cbar.set_label('log N')
+    if plot_contour:
+        hist,_,_ = np.histogram2d(Jp_Jcirc, E_Enorm, **hist_kwargs)
+        hist = np.ma.masked_where(hist==0,hist)
+        # hist = np.log10(hist)
+        # hist = np.log10(np.rot90(hist, k=3))
+        hist = np.log10(hist.T)
+        axs[1].contour(hist, **contour_kwargs)
+    if plot_scatter:
+        axs[1].scatter(Jp_Jcirc, E_Enorm, **scatter_kwargs)
+    axs[1].set_xlabel(r'$j_{p}/j_{circ}$', fontsize=16)
+    axs[1].set_ylabel(r'$E/ \vert E_{norm} \vert$', fontsize=16)
+
+    ## Jz/Jcirc - Jp/Jcirc
+    xindx = 1
+    yindx = 2
+    hist_kwargs['range'] = [plot_range[xindx],plot_range[yindx]]
+    extent = (plot_range[xindx][0],plot_range[xindx][1],
+              plot_range[yindx][0],plot_range[yindx][1])
+    img_kwargs['extent'] = extent
+    contour_kwargs['extent'] = extent
+    axs[2].set_aspect('auto')
+    if plot_hist:
+        hist,_,_ = np.histogram2d(Jz_Jcirc, Jp_Jcirc, **hist_kwargs)
+        hist = np.ma.masked_where(hist==0,hist)
+        hist = np.log10(np.rot90(hist))
+        im = axs[2].imshow(hist, **img_kwargs)
+        cbar = plt.colorbar(im, ax=axs[2])
+        cbar.set_label('log N')
+    if plot_contour:
+        hist,_,_ = np.histogram2d(Jz_Jcirc, Jp_Jcirc, **hist_kwargs)
+        hist = np.ma.masked_where(hist==0,hist)
+        # hist = np.log10(hist)
+        # hist = np.log10(np.rot90(hist, k=3))
+        hist = np.log10(hist.T)
+        axs[2].contour(hist, **contour_kwargs)
+    if plot_scatter:
+        axs[2].scatter(Jz_Jcirc, Jp_Jcirc, **scatter_kwargs)
+    axs[2].set_xlabel(r'$j_{z}/j_{circ}$', fontsize=16)
+    axs[2].set_ylabel(r'$j_{p}/j_{circ}$', fontsize=16)
+
+    return fig,axs
+
+def plot_E_Enorm_Jz_Jcirc_margins(orbs,E,Jcirc,masses=None,plot_hist=True,
+    hist_kwargs=None,img_kwargs=None,plot_scatter=False,scatter_kwargs=None,
+    margin_hist_kwargs=None,show_population_lines=True,
+    plot_range=[[-1,0],[-1,1]],margin_gmm=True):
+    '''plot_E_Enorm_Jz_Jcirc_margins:
+
+    Make E/Enorm vs Jz/Jcirc figure including margins
+
+    Args:
+        orbs (galpy.orbit.Orbit): Orbit object representing particles
+        E (np.array): Energy of the orbits
+        Jcirc (np.array): Jcirc values for orbits
+        plot_hist (bool): Plot histograms
+        hist_kwargs (dict): Keyword arguments for np.histogram2d
+        img_kwargs (dict): Keyword arguments for ax.imshow
+        plot_scatter (bool): Plot scatter plot (plot_hist overrides)
+        scatter_kwargs (dict): Keyword arguments for ax.scatter
+        margin_hist_kwargs (dict): Keyword arguments for ax.hist for margins
+        show_population_lines (bool): Show lines dividing kinematic populations
+            in E/Enorm vs Jz/Jcirc plane
+        plot_range (list): List of ranges E/Enorm, Jz/Jcirc
+
+    Returns:
+        fig,axs (tuple): Matplotlib figure and axes objects
+    '''
+    # if fig is None or axs is None:
+    # Make the figure as well as margin axes
+    fig = plt.figure(figsize=(8,6))
+    gs = fig.add_gridspec(4,5,hspace=0.15,wspace=0.15)
+    ax = fig.add_subplot(gs[1:,1:-1])
+    axl = fig.add_subplot(gs[1:,0])
+    axt = fig.add_subplot(gs[0,1:-1])
+    axr = fig.add_subplot(gs[1:,-1])
+    
+    # Handle plot_hist & plot_scatter
+    if plot_hist and plot_scatter:
+        plot_scatter = False
+        warnings.warn('plot_hist and plot_scatter True, prioritizing plot_hist')
+
+    # Handle empty dictionaries
+    if hist_kwargs is None: hist_kwargs = {}
+    if img_kwargs is None: img_kwargs = {}
+    if scatter_kwargs is None: scatter_kwargs = {}
+    if margin_hist_kwargs is None: margin_hist_kwargs = {}
+
+    # Input default kwargs into hist/img/scatter kwargs
+    if 'range' in hist_kwargs.keys():
+        del hist_kwargs['range']
+        warnings.warn('range kwarg not supported within hist_kwargs, '+\
+            'use plot_range keyword instead')
+    if 'orientation' in margin_hist_kwargs.keys():
+        del margin_hist_kwargs['orientation']
+    default_hist_kwargs = dict(bins=20)
+    default_img_kwargs = dict(cmap='Blues', aspect='auto', vmin=2, vmax=5)
+    default_scatter_kwargs = dict(s=1, alpha=0.1, color='Black')
+    default_margin_hist_kwargs = dict(bins=20, histtype='step', density=True)
+    for key in default_hist_kwargs.keys():
+        if key not in hist_kwargs.keys():
+            hist_kwargs[key] = default_hist_kwargs[key]
+    for key in default_img_kwargs.keys():
+        if key not in img_kwargs.keys():
+            img_kwargs[key] = default_img_kwargs[key]
+    for key in default_scatter_kwargs.keys():
+        if key not in scatter_kwargs.keys():
+            scatter_kwargs[key] = default_scatter_kwargs[key]
+    for key in default_margin_hist_kwargs.keys():
+        if key not in margin_hist_kwargs.keys():
+            margin_hist_kwargs[key] = default_margin_hist_kwargs[key]
+
+    # Handle masses
+    if masses is None:
+        masses = np.ones(len(orbs))
+    if 'weights' in margin_hist_kwargs.keys():
+        # masses *= margin_hist_kwargs['weights']
+        del margin_hist_kwargs['weights']
+        # warnings.warn('Multiplying weights in margin_hist_kwargs to masses')
+    if 'weights' in hist_kwargs.keys():
+        # masses *= hist_kwargs['weights']
+        del hist_kwargs['weights']
+        # warnings.warn('Multiplying weights in hist_kwargs to masses')
+    if isinstance(masses,apu.Quantity):
+        masses = masses.to(apu.Msun).value
+
+    # Calculate angular momentum
+    Jz = orbs.Lz()
+    if isinstance(Jz,apu.Quantity):
+        Jz = Jz.to(apu.kpc*apu.km/apu.s).value
+    
+    # Calculate the plotting quantities
+    if isinstance(E,apu.Quantity):
+        E = E.to(apu.km**2/apu.s**2).value
+    E_Enorm = E/np.abs(E).max()
+    Jz_Jcirc = Jz / Jcirc
+
+    ## Jz/Jcirc - Enorm
+    xindx = 1
+    yindx = 0
+    hist_kwargs['range'] = [plot_range[xindx],plot_range[yindx]]
+    img_kwargs['extent'] = (plot_range[xindx][0],plot_range[xindx][1],
+                            plot_range[yindx][0],plot_range[yindx][1])
+    ax.set_aspect('auto')
+    if plot_hist:
+        hist,_,_ = np.histogram2d(Jz_Jcirc, E_Enorm, **hist_kwargs, 
+            weights=masses)
+        hist *= (len(orbs)/np.sum(masses)) # Converts to weighted number counts
+        hist = np.log10(np.rot90(hist))
+        im = ax.imshow(hist, **img_kwargs)
+        #cbar = plt.colorbar(im, ax=ax)
+        #cbar.set_label('log N')
+    if plot_scatter:
+        ax.scatter(Jz_Jcirc, E_Enorm, **scatter_kwargs)
+    ax.set_xlabel(r'$j_{z}/j_{circ}$', fontsize=16)
+    # ax.set_ylabel(r'$E/ \vert E_{norm} \vert$', fontsize=16)
+    ax.tick_params(labelleft=False)
+
+    # Add fiducials
+    Jz_Jcirc_halo_bound, Jz_Jcirc_disk_bound, Enorm_bulge_bound = \
+            pkin._E_Enorm_Jz_Jcirc_bounds()
+    if show_population_lines:
+        ax.axvline(Jz_Jcirc_halo_bound, color='Black', linestyle='dashed')
+        ax.axvline(Jz_Jcirc_disk_bound, color='Black', linestyle='dashed')
+        ax.plot([-1,Jz_Jcirc_halo_bound], 
+            [Enorm_bulge_bound,Enorm_bulge_bound], color='Black', 
+            linestyle='dashed')
+        ax.annotate('Halo', xy=(0.02,0.95), xycoords='axes fraction', 
+                    fontsize=10)
+        ax.annotate('Bulge', xy=(0.02,0.2), xycoords='axes fraction', 
+                    fontsize=10)
+        ax.annotate('Thick Disk', xy=(0.77,0.8), xycoords='axes fraction', 
+                    fontsize=10, rotation='vertical')
+        ax.annotate('Thin Disk', xy=(0.92,0.8), xycoords='axes fraction', 
+                    fontsize=10, rotation='vertical')
+    
+    ## Do the margins
+
+    # Left is E/Enorm, but only for spheroidal particles
+    spheroid_mask = (Jz_Jcirc < Jz_Jcirc_halo_bound)
+    margin_hist_kwargs['range'] = plot_range[0]
+    axln,_,_ = axl.hist(E_Enorm[spheroid_mask], **margin_hist_kwargs, 
+        weights=masses[spheroid_mask], orientation='horizontal')
+    if show_population_lines:
+        axl.axhline(Enorm_bulge_bound, color='Black', linestyle='dashed')
+        axl.annotate(r'$j_{z}/j_{circ} < 0.5$', xy=(0.02,0.95), 
+            xycoords='axes fraction',fontsize=10)
+
+    # Top is Jz/Jcirc
+    margin_hist_kwargs['range'] = plot_range[1]
+    axtn,_,_ = axt.hist(Jz_Jcirc, **margin_hist_kwargs, weights=masses, 
+        orientation='vertical')
+    if show_population_lines:
+        axt.axvline(Jz_Jcirc_halo_bound, color='Black', linestyle='dashed')
+        axt.axvline(Jz_Jcirc_disk_bound, color='Black', linestyle='dashed')
+    
+    # Right is E/Enorm, but only for disk particles
+    disk_mask = (Jz_Jcirc > Jz_Jcirc_halo_bound)
+    margin_hist_kwargs['range'] = plot_range[0]
+    axrn,_,_ = axr.hist(E_Enorm[disk_mask], **margin_hist_kwargs,
+        weights=masses[disk_mask], orientation='horizontal')
+    if show_population_lines:
+        axr.axhline(Enorm_bulge_bound, color='Black', linestyle='dashed')
+        axr.annotate(r'$j_{z}/j_{circ} > 0.5$', xy=(0.02,0.95), 
+            xycoords='axes fraction',fontsize=10)
+    
+    # Do GMM fits if requested
+    if margin_gmm:
+        ## Left axis: E/Enorm for the spheroid
+        
+        # Try a few different numbers of components
+        trial_n_components = [1,2,3,4]
+        n_components_colors = ['C'+str(i) for i in range(len(trial_n_components))]
+        # trial_bic = np.zeros(len(trial_n_components))
+        # for i in range(len(trial_n_components)):
+        #     _gmm = sklearn.mixture.GaussianMixture(
+        #         n_components=trial_n_components[i]).fit(
+        #             E_Enorm[spheroid_mask].reshape(-1,1))
+        #     trial_bic[i] = _gmm.bic(E_Enorm[spheroid_mask].reshape(-1,1))
+        # n_components = trial_n_components[np.argmin(trial_bic)]
+        # if n_components > 1: # If > 1 component preferred, just go for the one that provides the most improvement
+        #     n_components = trial_n_components[np.argmin(np.diff(trial_bic))+1]
+        n_components = 2
+        gml = sklearn.mixture.GaussianMixture(n_components=n_components).fit(
+            E_Enorm[spheroid_mask].reshape(-1,1))
+       
+        # Plot the whole GMM
+        x = np.linspace(plot_range[0][0],plot_range[0][1],1000)
+        log_scores = gml.score_samples(x.reshape(-1,1))
+        axl.plot(np.exp(log_scores), x, color='Black',
+            linestyle='dashed', zorder=4)
+        score_mins = scipy.signal.argrelmin(np.exp(log_scores),mode='clip')[0]
+        if len(score_mins) > n_components-1:
+            warnings.warn('Number of minima found is > n_components-1'
+                          ' for the spheroid GMM, plotting all')
+        for i in range(len(score_mins)):
+            axl.axhline(x[score_mins[i]], color='Black', linestyle='dashed',
+                        zorder=6, alpha=0.25)
+            ax.axhline(x[score_mins[i]], color='Black', linestyle='dashed',
+                        zorder=6, alpha=0.25)
+        
+        # Plot the GMM component Guassians
+        for i in range(gml.n_components):
+            pdf = gml.weights_[i]*scipy.stats.norm.pdf(x, gml.means_[i], 
+                np.sqrt(gml.covariances_[i]))
+            axl.plot(pdf.flatten(), x, color=n_components_colors[i], 
+                linestyle='dotted', zorder=5)
+    
+    # Set the limits
+    margin_label_fs = 12
+    ax.set_xlim(plot_range[1])
+    ax.set_ylim(plot_range[0])
+    axl.set_ylim(plot_range[0])
+    axl.invert_xaxis()
+    axt.set_xlim(plot_range[1])
+    axr.set_ylim(plot_range[0])
+
+    # Handle axis and tick labels
+    axl.set_xlabel(r'$p(E/ \vert E_{norm} \vert)$', fontsize=margin_label_fs)
+    axl.set_ylabel(r'$E/ \vert E_{norm} \vert $', fontsize=margin_label_fs)
+    axl.yaxis.set_label_position('left')
+    # axl.set_xticks([0,1,2,3,4,5])
+    axl.tick_params(axis='both',which='both',labelleft=True,labelright=False,
+        labelbottom=False,labelsize=margin_label_fs)
+    
+    axt.set_ylabel(r'$p(j_{z}/j_{circ})$', fontsize=margin_label_fs)
+    axt.tick_params(axis='both',which='both',labelbottom=False)
+    
+    axr.set_xlabel(r'$p(E/ \vert E_{norm} \vert)$', fontsize=margin_label_fs)
+    axr.set_ylabel(r'$E/ \vert E_{norm} \vert$', fontsize=margin_label_fs)
+    axr.yaxis.set_label_position('right')
+    # axr.set_xticks([0,1,2,3,4,5])
+    axr.tick_params(axis='both', which='both',labelleft=False,labelright=True,
+        labelbottom=False,labelsize=margin_label_fs)
+
+    return fig, (ax,axl,axt,axr)
