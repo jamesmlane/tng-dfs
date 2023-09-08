@@ -20,6 +20,7 @@ import requests
 import time
 import copy
 import dill as pickle
+import astropy.units as apu
 import pdb
 
 __snap_zs__ = None
