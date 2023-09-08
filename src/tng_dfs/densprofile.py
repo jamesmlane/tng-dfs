@@ -85,12 +85,65 @@ class SphericalDensityProfile(DensityProfile):
             rmin = rmin.to(apu.kpc).value
         if isinstance(rmax, apu.Quantity):
             rmax = rmax.to(apu.kpc).value
-        return self.mass(rmax, params, integrate=integrate)\
-            - self.mass(rmin, params, integrate=integrate)
+        
+        vol = self.mass(rmax, params, integrate=integrate)
+        if rmin > 0.:
+            vol -= self.mass(rmin, params, integrate=integrate)
+        return vol
+
+    def rforce(self, r, params):
+        '''rforce:
+
+        Calculate the radial force of the density profile. Does not include
+        G.
+
+        Args:
+            r (array): Array of galactocentric spherical radii in kpc
+            params (list): List of parameters for the density profile, see
+                class docstring.
+        '''
+        if isinstance(r, apu.Quantity):
+            r = r.to(apu.kpc).value
+        return -self.mass(r, params, integrate=False)/r**2
+
+class AxisymmetricDensityProfile(DensityProfile):
+    '''AxisymmetricDensityProfile:
+
+    Superclass for axisymmetric density profiles
+    '''
+    def __init__(self):
+        super(AxisymmetricDensityProfile, self).__init__()
+    
+    def effective_volume(self, params, rmin=0., rmax=np.inf, zmax=np.inf, 
+        integrate=False):
+        '''effective_volume:
+
+        Integrate the density profile over all space. This is the effective
+        volume of the density profile.
+
+        Args:
+            params (list): List of parameters for the density profile
+            rmin (float): Minimum radius in kpc [default: 0.]
+            rmax (float): Maximum radius in kpc [default: np.inf]
+            zmax (float): Maximum height above the plane in kpc [default: np.inf]
+        
+        Returns:
+            effvol (float): Effective volume of the density profile
+        '''
+        if isinstance(rmin, apu.Quantity):
+            rmin = rmin.to(apu.kpc).value
+        if isinstance(rmax, apu.Quantity):
+            rmax = rmax.to(apu.kpc).value
+        if isinstance(zmax, apu.Quantity):
+            zmax = zmax.to(apu.kpc).value
+        vol = self.mass(rmax, params, zmax=zmax, integrate=integrate)
+        if rmin > 0.:
+            vol -= self.mass(rmin, params, zmax=zmax, integrate=integrate)
+        return vol
 
 # ----------------------------------------------------------------------------
 
-### Density profiles
+### Spherical density profiles
 
 # Two Power Spherical
 
@@ -149,14 +202,14 @@ class TwoPowerSpherical(SphericalDensityProfile):
         '''
         if len(params) == 3:
             alpha, beta, a = params
-            amp = 1.0
+            A = 1.0
         elif len(params) == 4:
             alpha, beta, a, amp = params
         else:
             raise ValueError("params must have length 3 or 4")
         if isinstance(a, apu.Quantity):
             a = a.to(apu.kpc).value
-        if isinstance(amp, apu.Quantity):
+        if isinstance(A, apu.Quantity):
             amp = amp.to(apu.Msun/apu.kpc**3).value
         return alpha, beta, a, amp
     
