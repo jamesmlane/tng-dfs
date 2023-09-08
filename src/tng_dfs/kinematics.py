@@ -329,10 +329,202 @@ def calculate_weighted_average_J(J,rs,dens=None,qs=None,weights=None,
     if weights is None:
         weights = dens*rs**2
     
+    if handle_nans:
+        mask = np.isnan(J) | np.isinf(J) | np.isnan(weights) | np.isinf(weights)
+        J[mask] = 0.
+        weights[mask] = 0.
+
     J_avg = np.average(J,weights=weights)
     J_dispersion = np.sqrt(np.average((J-J_avg)**2,weights=weights))
     
     return J_avg,J_dispersion
+
+def get_radius_binning(orbs, n=1000, rmin=0., rmax=np.inf,
+    bin_mode='restrict number', max_bin_size=None, bin_equal_n=True, 
+    end_mode='bin', delta_n=10, delta_r=1e-8):
+    '''get_radius_binning:
+
+    Bin up the samples according to radius so that there's a minimum number 
+    of samples in each bin. The algorithm is as follows:
+
+    Figure out the number of bins that satisfies the criterion that 
+    each bin has at least min_n samples. Then, place the bin edges so that 
+    they each contain the same number of samples.
+
+    There are 3 possibilities for bin_mode:
+    - If bin_mode is 'enforce size', then max_bin_size will be enforced. n will 
+        be flexible and will be decreased if necessary to satisfy the 
+        max_bin_size. bin_equal_n can be used.
+    - If bin_mode is 'enforce numbers', then n will be enforced as the minimum
+        number of samples per bin. bin_equal_n can be used.
+    - If bin_mode is 'exact numbers', then n will be enforced as the exact
+        number of samples per bin. max_bin_size, bin_equal_n, and end_mode
+        will be ignored.
+
+    Args:
+        orbs (orbit.Orbit or np.array): Array of orbits or radii in kpc if array
+        n (int): Minimum number of samples within each bin
+        rmin (float): Minimum radius to consider kpc, can be Quantity
+        rmax (float): Maximum radius to consider kpc, can be Quantity. If 
+            np.inf, then just use the maximum radius in the sample.
+        bin_mode (str) One of 'enforce size', 'enforce numbers', 
+            'exact numbers'. See above for details.
+
+        max_bin_size (float): Maximum size of a bin in kpc, can be Quantity
+        bin_equal_n (bool): If True, then each bin will have ~ the same number
+            of samples. If False, then the number of samples in each bin will
+            be as close to min_n as possible.
+        end_mode (str): Behaviour for the samples in the last bin. If 
+            'bin', then last samples will be contained in their own bin. If 
+            'join' then the samples in the last bin will be joined with the 
+            previous bin. If float from 0 to 1 then will use 'join' if the 
+            fraction of samples in the last bin compared w/ the previous bin is
+            less than the float, otherwise will use 'bin'. If 'ignore', then
+            the last samples will be ignored.
+    
+        delta_n (int): Small number to decrease n by if the bin size is too
+            large.
+        delta_r (float): Small number to add to the bin edges to make sure that
+            the bin edges are not exactly on top of a sample.
+        
+    '''
+    ## Handle keyword collisions
+    # specifically focus on end_mode? Maybe test
+
+    # Check the model inputs
+    assert bin_mode in ['enforce size','enforce numbers','exact numbers'], \
+        'bin_mode must be one of "enforce size", "enforce numbers", "exact numbers"'
+    assert end_mode in ['bin','join','ignore'] or isinstance(end_mode,float), \
+        'last_samples must be one of "bin", "join", "ignore", or be a float'
+
+    # Wrangle the numerical inputs
+    if isinstance(orbs,orbit.Orbit):
+        rs = orbs.r()
+    else:
+        rs = copy.deepcopy(orbs)
+    if isinstance(rs,apu.quantity.Quantity):
+        rs = rs.to(apu.kpc).value
+    if isinstance(rmin,apu.quantity.Quantity):
+        rmin = rmin.to(apu.kpc).value
+    if isinstance(rmax,apu.quantity.Quantity):
+        rmax = rmax.to(apu.kpc).value
+    if isinstance(max_bin_size,apu.quantity.Quantity):
+        max_bin_size = max_bin_size.to(apu.kpc).value
+    n = int(n)
+    
+    # Mask out the radii that are outside the range
+    mask = (rs > rmin) & (rs < rmax)
+    rs = rs[mask]
+    rs_sorted = np.sort(rs)
+
+    # There will be a number of bins ~ number of floor(len(rs)/n)
+    bin_edges = [rmin,]
+    n_bins = int(np.floor(len(rs)/n))
+
+    # First do the 'enforce size' algorithm
+    if bin_mode == 'enforce size':
+        bin_size_good = False
+        while not bin_size_good:
+            bin_edges = [rmin,]
+            n_bins = int(np.floor(len(rs)/n))
+            if bin_equal_n: # Increase n until it's possible to have equal n
+                _n = n
+                while len(rs)/_n > n_bins:
+                    if len(rs)/(_n+1) <= n_bins:
+                        break
+                    _n += 1
+            else: # Don't care, just use n
+                _n = n
+            for i in range(n_bins):
+                new_bin_edge = rs_sorted[(i+1)*_n-1]+delta_r
+                bin_edges.append(new_bin_edge)
+            if np.any(np.diff(bin_edges) > max_bin_size):
+                n -= delta_n
+                if n <= 0:
+                    raise ValueError('n has been decreased to 0')
+            else:
+                bin_size_good = True
+
+    # Then do the 'enforce numbers' algorithm
+    if bin_mode == 'enforce numbers':
+        bin_edges = [rmin,]
+        n_bins = int(np.floor(len(rs)/n))
+        if bin_equal_n: # Increase n until it's possible to have equal n
+            _n = n
+            while len(rs)/_n > n_bins:
+                _n += 1
+            else: # Don't care, just use n
+                _n = n
+            for i in range(n_bins):
+                new_bin_edge = rs_sorted[(i+1)*_n-1]+delta_r
+                bin_edges.append(new_bin_edge)
+
+    # Now do the 'exact numbers' algorithm
+    if bin_mode == 'exact numbers':
+        bin_edges = [rmin,]
+        n_bins = int(np.floor(len(rs)/n))
+        for i in range(n_bins):
+            new_bin_edge = rs_sorted[(i+1)*n-1]+delta_r
+            bin_edges.append(new_bin_edge)
+
+    # Handling the last bin
+    if isinstance(end_mode,float):
+        if end_mode < 0 or end_mode > 1:
+            raise ValueError('end_mode must be between 0 and 1')
+        n_end = np.sum(rs > bin_edges[-1])
+        n_final_bin = np.sum((rs > bin_edges[-2])&(rs <= bin_edges[-1]))
+        if n_end/n_final_bin < end_mode:
+            end_mode = 'join'
+        else:
+            end_mode = 'bin'
+    if bin_mode == 'exact numbers': # Each bin has exactly n samples, no need to deal with ends
+        pass
+    elif end_mode == 'bin': # Add a bin edge at the end
+        bin_edges.append(rs_sorted[-1]+delta_r)
+    elif end_mode == 'join': # Move the last bin edge to the last sample
+        bin_edges[-1] = rs_sorted[-1]+delta_r
+    elif end_mode == 'ignore': # Ignore the final samples
+        pass
+
+    # Get the number of samples in each bin as a useful quantity
+    n_samples = np.empty(len(bin_edges)-1)
+    for i in range(len(bin_edges)-1):
+        n_samples[i] = len(rs[(rs > bin_edges[i]) & (rs <= bin_edges[i+1])])
+    
+    bin_edges = np.asarray(bin_edges)
+
+    return bin_edges, n_samples
+
+
+def calculate_Krot(orbs,masses,return_kappa=False):
+    '''calculate_Krot:
+
+    Calculate Krot, rotational support factor, by summing the mass-weighted 
+    kappa values.
+
+    Args:
+        orbs (galpy.orbit.Orbit) - Orbits representing the motions of the 
+            particles
+        masses (np.array or float) - Masses
+        return_kappa (optional, bool) - If True, return the individual kappa
+            values [default: False]
+    
+    Returns:
+        Krot (float) - Rotational support factor
+    '''
+    vphi = orbs.vT()
+    vtot = (orbs.vR()**2.+orbs.vz()**2.+orbs.vT()**2.)**0.5
+    if isinstance(vphi,apu.Quantity):
+        vphi = vphi.to(apu.km/apu.s).value
+    if isinstance(vtot,apu.Quantity):
+        vtot = vtot.to(apu.km/apu.s).value
+    
+    kappa = vphi**2./vtot**2.
+    Krot = np.sum(kappa*masses)/np.sum(masses)
+    if return_kappa:
+        return Krot,kappa
+    else:
+        return Krot
 
 def beta_any_alpha_cuddeford91(r,ra=1.,alpha=0.,beta=None):
     '''beta_any_alpha:
