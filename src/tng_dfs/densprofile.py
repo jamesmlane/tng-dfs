@@ -265,7 +265,7 @@ class NFWSpherical(SphericalDensityProfile):
             return 4*np.pi*scipy.integrate.quad(intfunc, 0, r)[0]
         else:
             a, amp = self._parse_params(params)
-            return 4*np.pi*amp*(a**3)*((a/(a+r))+np.log(a+r))
+            return 4*np.pi*amp*(a**3)*(np.log(1+r/a)-(r/a)/(1+r/a))
 
 # Broken Power Law Spherical
 
@@ -454,8 +454,6 @@ class DoubleBrokenPowerLawSpherical(SphericalDensityProfile):
         Returns:
             mass (array): Array of enclosed masses in Msun
         '''
-        if isinstance(r, apu.Quantity):
-            r = r.to(apu.kpc).value
         alpha1, alpha2, alpha3, r1, r2, amp = self._parse_params(params)
         if integrate:
             intfunc = lambda r: r**2*self(r, 0., 0., params)
