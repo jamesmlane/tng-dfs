@@ -220,13 +220,16 @@ class TwoPowerSpherical(SphericalDensityProfile):
         Calculate the enclose mass of the density profile.
 
         Args:
-            r (array): Array of galactocentric spherical radii in kpc
+            r (array): Array of galactocentric spherical radii in kpc, 
+                can be astropy quantity.
             params (list): List of parameters for the density profile, see
                 class docstring.
         
         Returns:
             mass (array): Array of enclosed masses in Msun
         '''
+        if isinstance(r,apu.Quantity):
+            r = r.to(apu.kpc).value
         alpha, beta, a, amp = self._parse_params(params)
         if integrate:
             intfunc = lambda r: r**2*self(r, 0., 0., params=params)
@@ -305,14 +308,16 @@ class NFWSpherical(SphericalDensityProfile):
         Calculate the enclose mass of the density profile.
 
         Args:
-            R, phi, z (array): Arrays of galactocentric cylindrical radius, 
-                azimuth, and height above the plane. Can be astropy quantities.
+            r (array): Array of galactocentric spherical radii in kpc, 
+                can be astropy quantity.
             params (list): List of parameters for the density profile, see
                 class docstring.
         
         Returns:
             mass (array): Array of enclosed masses in Msun
         '''
+        if isinstance(r,apu.Quantity):
+            r = r.to(apu.kpc).value
         if integrate:
             intfunc = lambda r: r**2*self(r, 0., 0., params)
             return 4*np.pi*scipy.integrate.quad(intfunc, 0, r)[0]
@@ -397,13 +402,16 @@ class BrokenPowerLawSpherical(SphericalDensityProfile):
         Calculate the enclose mass of the density profile.
 
         Args:
-            r (array): Array of galactocentric spherical radii in kpc
+            r (array): Array of galactocentric spherical radii in kpc, 
+                can be astropy quantity.
             params (list): List of parameters for the density profile, see
                 class docstring.
         
         Returns:
             mass (array): Array of enclosed masses in Msun
         '''
+        if isinstance(r,apu.Quantity):
+            r = r.to(apu.kpc).value
         alpha1, alpha2, r1, amp = self._parse_params(params)
         if integrate:
             intfunc = lambda r: r**2*self(r, 0., 0., params)
@@ -500,7 +508,8 @@ class DoubleBrokenPowerLawSpherical(SphericalDensityProfile):
         Calculate the enclose mass of the density profile.
 
         Args:
-            r (array): Array of galactocentric spherical radii in kpc
+            r (array): Array of galactocentric spherical radii in kpc, 
+                can be astropy quantity.
             params (list): List of parameters for the density profile, see
                 class docstring.
         
@@ -601,7 +610,8 @@ class SinglePowerCutoffSpherical(SphericalDensityProfile):
         Calculate the enclosed mass of the density profile.
 
         Args:
-            r (array): Array of galactocentric spherical radii in kpc
+            r (array): Array of galactocentric spherical radii in kpc, 
+                can be astropy quantity.
             params (list): List of parameters for the density profile, see
                 class docstring.
         
@@ -775,11 +785,16 @@ class MiyamotoNagai(AxisymmetricDensityProfile):
         as if z is integrated from -inf to inf.
         
         Args:
-            R (array): Array of galactocentric cylindrical radii in kpc
+            R (array): Array of galactocentric cylindrical radii in kpc, 
+                can be astropy quantity.
             params (list): List of parameters for the density profile, see
                 class docstring.
             z (array): Array of heights above the x-y plane in kpc, if None 
-                then integrate from -inf to inf. [default: None] 
+                then integrate from -inf to inf. Can be astropy quantity 
+                [default: None] 
+        
+        Returns:
+            mass (array) - Enclosed mass in Msun. 
         '''
 
         if isinstance(R, apu.Quantity):
