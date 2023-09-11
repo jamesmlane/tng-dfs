@@ -19,6 +19,7 @@ from galpy import potential
 from galpy import orbit
 import astropy.units as apu
 import astropy.cosmology
+import astropy.constants
 import scipy.interpolate
 import scipy.integrate
 import scipy.special
@@ -95,17 +96,22 @@ class SphericalDensityProfile(DensityProfile):
     def rforce(self, r, params):
         '''rforce:
 
-        Calculate the radial force of the density profile. Does not include
-        G.
+        Calculate the radial force of the density profile.
 
         Args:
             r (array): Array of galactocentric spherical radii in kpc
             params (list): List of parameters for the density profile, see
                 class docstring.
+        
+        Returns:
+            rforce (array): Array of spherical radial force in km/s/Myr
         '''
         if isinstance(r, apu.Quantity):
             r = r.to(apu.kpc).value
-        return -self.mass(r, params, integrate=False)/r**2
+        _mr2 = -self.mass(r, params, integrate=False)/r**2
+        _mr2 *= (apu.Msun/apu.kpc**2)
+        _rforce = _mr2*astropy.constants.G
+        return _rforce.to(apu.km/apu.s/apu.Myr)
 
 class AxisymmetricDensityProfile(DensityProfile):
     '''AxisymmetricDensityProfile:
@@ -753,12 +759,19 @@ class MiyamotoNagai(AxisymmetricDensityProfile):
                 and height above the x-y plane. Can be astropy quantities.
             params (list): List of parameters for the density profile, see
                 class docstring.
+        
+        Returns:
+            Rforce (array): List of cylindrical radial forces in km/s/Myr. 
+                Assuming amp in Msun, 
         '''
         R, _, z = self._parse_R_phi_z_input(R, 0., z)
         a, b, amp = self._parse_params(params)
         sqrtbz = np.sqrt(b**2.0 + z**2.0)
         asqrtbz = a + sqrtbz
-        return -amp*(R)/((asqrtbz**2 + R**2)**1.5)
+        _mr2 = -amp*(R)/((asqrtbz**2 + R**2)**1.5)
+        _mr2 *= (apu.Msun/apu.kpc**2)
+        _Rforce = _mr2*astropy.constants.G
+        return _Rforce.to(apu.km/apu.s/apu.Myr)
 
     def zforce(self, R, z, params):
         '''zforce:
@@ -770,12 +783,18 @@ class MiyamotoNagai(AxisymmetricDensityProfile):
                 and height above the x-y plane. Can be astropy quantities.
             params (list): List of parameters for the density profile, see
                 class docstring.
+        
+        Returns:
+            zforce (array): List of cylindrical vertical forces in km/s/Myr
         '''
         R, _, z = self._parse_R_phi_z_input(R, 0., z)
         a, b, amp = self._parse_params(params)
         sqrtbz = np.sqrt(b**2.0 + z**2.0)
         asqrtbz = a + sqrtbz
-        return -amp*(z*asqrtbz)/(sqrtbz*(asqrtbz**2 + R**2)**1.5)
+        _mr2 = -amp*(z*asqrtbz)/(sqrtbz*(asqrtbz**2 + R**2)**1.5)
+        _mr2 *= (apu.Msun/apu.kpc**2)
+        _zforce = _mr2*astropy.constants.G
+        return _zforce.to(apu.km/apu.s/apu.Myr)
 
     def mass(self, R, params, z=np.inf, integrate=False):
         '''mass:
