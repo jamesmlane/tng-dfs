@@ -244,6 +244,57 @@ class TwoPowerSpherical(SphericalDensityProfile):
             return 4*np.pi*amp*(r**3)*(r/a)**(-alpha)*scipy.special.hyp2f1(
                 3-alpha, beta-alpha, 4-alpha, -r/a)/(3-alpha)
     
+    def densfunc_to_pot(self, params, map_method='mass_at_a', densfunc=None,
+        ro=_ro, vo=_vo, validate=True):
+        '''densfunc_to_pot:
+
+        Convert a pdens.TwoPowerSpherical instance to a 
+        potential.TwoPowerSphericalPotential based on supplied params
+
+        Args:
+            params (list): List of parameters for the density profile, see
+                class docstring.
+            map_method (string): String representing the method used to 
+                convert to galpy potential, see above [default 'mass_at_a']
+            densfunc (callable): pdens.DensityProfile instance to convert
+                [default pdens.TwoPowerSpherical()]
+            ro, vo (floats): galpy distance and velocity scales [default 
+                8.275, 220.]
+            validate (bool): Check that the galpy potential and pdens 
+                densfunc give the same enclosed mass, density, radial force.
+
+        Returns:
+            pot (potential.TwoPowerSphericalPotential) - output galpy potential
+        '''
+        if densfunc is None:
+            densfunc = TwoPowerSpherical()
+        alpha, beta, a, amp = densfunc._parse_params(params)
+
+        if map_method == 'mass_at_a':
+            _pot = potential.TwoPowerSphericalPotential(amp=1., a=a*apu.kpc, 
+                alpha=alpha, beta=beta, ro=ro, vo=vo)
+            _dmass = densfunc.mass(a*apu.kpc, params=params)
+            _pmass = _pot.mass(a*apu.kpc, use_physical=True).to(apu.Msun).value
+            _amp = _dmass/_pmass
+            pot = potential.TwoPowerSphericalPotential(amp=_amp, a=a*apu.kpc, 
+                alpha=alpha, beta=beta, ro=ro, vo=vo)
+        
+        if validate:
+            tol = 1e-8
+            rs = np.logspace(-1, 2, num=30)*apu.kpc
+            # Mass
+            gmass = pot.mass(rs).to(apu.Msun).value
+            dmass = densfunc.mass(rs, params)
+            assert np.all(np.abs((gmass-dmass)/dmass) < tol)
+            gdens = pot.dens(rs, 0.).to(apu.Msun/apu.kpc**3).value
+            ddens = densfunc(rs, 0., 0., params)
+            assert np.all(np.abs((gdens-ddens)/ddens) < tol)
+            gforce = pot.rforce(rs, 0.).to(apu.km/apu.s/apu.Myr).value
+            dforce = densfunc.rforce(rs, params).value
+            assert np.all(np.abs((gforce-dforce)/dforce) < tol)
+            
+        return pot
+    
 # NFW Spherical
 
 class NFWSpherical(SphericalDensityProfile):
@@ -330,6 +381,57 @@ class NFWSpherical(SphericalDensityProfile):
         else:
             a, amp = self._parse_params(params)
             return 4*np.pi*amp*(a**3)*(np.log(1+r/a)-(r/a)/(1+r/a))
+        
+    def densfunc_to_pot(self, params, map_method='mass_at_a', densfunc=None,
+        ro=_ro, vo=_vo, validate=True):
+        '''densfunc_to_pot:
+
+        Convert a pdens.NFWSpherical instance to a galpy potential.NFWPotential 
+        instance based on supplied params. map_method options are:
+        - 'mass_at_a': Determine the amplitude of the galpy potential by 
+            comparing the mass enclosed at the scale radius, a.
+
+        Args:
+            params (list): List of parameters for the density profile, see
+                class docstring.
+            map_method (string): String representing the method used to 
+                convert to galpy potential, see above [default 'mass_at_a']
+            densfunc (callable): pdens.DensityProfile instance to convert
+                [default pdens.NFWSpherical()]
+            ro, vo (floats): galpy distance and velocity scales [default 
+                8.275, 220.]
+            validate (bool): Check that the galpy potential and pdens 
+                densfunc give the same enclosed mass, density, radial force.
+
+        Returns:
+            pot (potential.NFWPotential): galpy NFW potential instance
+        '''
+        if densfunc is None:
+            densfunc = NFWSpherical()
+        a, amp = densfunc._parse_params(params)
+
+        if map_method == 'mass_at_a':
+            _pot = potential.NFWPotential(amp=1., a=a*apu.kpc, ro=ro, vo=vo)
+            _dmass = densfunc.mass(a*apu.kpc, params=params)
+            _pmass = _pot.mass(a*apu.kpc, use_physical=True).to(apu.Msun).value
+            _amp = _dmass/_pmass
+            pot = potential.NFWPotential(amp=_amp, a=a*apu.kpc, ro=ro, vo=vo)
+        
+        if validate:
+            tol = 1e-8
+            rs = np.logspace(-1, 2, num=30)*apu.kpc
+            # Mass
+            gmass = pot.mass(rs).to(apu.Msun).value
+            dmass = densfunc.mass(rs, params)
+            assert np.all(np.abs((gmass-dmass)/dmass) < tol)
+            gdens = pot.dens(rs, 0.).to(apu.Msun/apu.kpc**3).value
+            ddens = densfunc(rs, 0., 0., params)
+            assert np.all(np.abs((gdens-ddens)/ddens) < tol)
+            gforce = pot.rforce(rs, 0.).to(apu.km/apu.s/apu.Myr).value
+            dforce = densfunc.rforce(rs, params).value
+            assert np.all(np.abs((gforce-dforce)/dforce) < tol)
+        
+        return pot
 
 # Broken Power Law Spherical
 
@@ -670,7 +772,60 @@ class SinglePowerCutoffSpherical(SphericalDensityProfile):
                     return amp*out
                 else:
                     return amp*out[0]
-                
+    
+    def densfunc_to_pot(self, params, map_method='mass_at_rc', densfunc=None,
+        ro=_ro, vo=_vo, validate=True):
+        '''densfunc_to_pot:
+
+        Convert a pdens.SinglePowerCutoffSpherical instance to a 
+        potential.PowerSphericalPotentialwCutoff based on supplied params.
+        map_method options are:
+        - 'mass_at_rc': Determine the amplitude of the galpy potential by 
+            comparing the mass enclosed at the exponential scale radius, rc.
+
+        Args:
+            params (list): List of parameters for the density profile, see
+                class docstring.
+            map_method (string): String representing the method used to 
+                convert to galpy potential, see above [default 'mass_at_rc']
+            densfunc (callable): pdens.DensityProfile instance to convert
+                [default pdens.TwoPowerSpherical()]
+            ro, vo (floats): galpy distance and velocity scales [default 
+                8.275, 220.]
+            validate (bool): Check that the galpy potential and pdens 
+                densfunc give the same enclosed mass, density, radial force.
+
+        Returns:
+            pot (potential.PowerSphericalPotentialwCutoff) - output galpy potential
+        '''
+        if densfunc is None:
+            densfunc = SinglePowerCutoffSpherical()
+        alpha, rc, amp = densfunc._parse_params(params)
+
+        if map_method == 'mass_at_rc':
+            _pot = potential.PowerSphericalPotentialwCutoff(amp=1., alpha=alpha, 
+                rc=rc*apu.kpc, ro=ro, vo=vo)
+            _dmass = densfunc.mass(rc*apu.kpc, params=params)
+            _pmass = _pot.mass(rc*apu.kpc, use_physical=True).to(apu.Msun).value
+            _amp = _dmass/_pmass
+            pot = potential.PowerSphericalPotentialwCutoff(amp=_amp, 
+                alpha=alpha, rc=rc*apu.kpc, ro=ro, vo=vo)
+        
+        if validate:
+            tol = 1e-8
+            rs = np.logspace(-1, 2, num=30)*apu.kpc
+            # Mass
+            gmass = pot.mass(rs).to(apu.Msun).value
+            dmass = densfunc.mass(rs, params)
+            assert np.all(np.abs((gmass-dmass)/dmass) < tol)
+            gdens = pot.dens(rs, 0.).to(apu.Msun/apu.kpc**3).value
+            ddens = densfunc(rs, 0., 0., params)
+            assert np.all(np.abs((gdens-ddens)/ddens) < tol)
+            gforce = pot.rforce(rs, 0.).to(apu.km/apu.s/apu.Myr).value
+            dforce = densfunc.rforce(rs, params).value
+            assert np.all(np.abs((gforce-dforce)/dforce) < tol)
+        
+        return pot
 
 # ----------------------------------------------------------------------------
 
