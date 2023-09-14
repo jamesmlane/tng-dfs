@@ -928,6 +928,64 @@ class DoubleExponentialDisk(AxisymmetricDensityProfile):
         else:
             return 4*np.pi*amp*hr*hz*(hr-np.exp(-R/hr)*(hr+R))*(1-np.exp(-np.abs(z)/hz))
 
+    def densfunc_to_pot(self, params, map_method='mass_at_scale', densfunc=None,
+        ro=_ro, vo=_vo, validate=True):
+        '''densfunc_to_pot:
+
+        Convert a pdens.DoubleExponentialDisk instance to a 
+        potential.DoubleExponentialDiskPotential based on supplied params.
+        map_method options are:
+        - 'mass_at_scale': Determine the amplitude of the galpy potential by 
+            comparing the slab mass enclosed by the exponential scale lengths, 
+            hr and hz.
+
+        Args:
+            params (list): List of parameters for the density profile, see
+                class docstring.
+            map_method (string): String representing the method used to 
+                convert to galpy potential, see above [default 'mass_at_scale']
+            densfunc (callable): pdens.DensityProfile instance to convert
+                [default pdens.TwoPowerSpherical()]
+            ro, vo (floats): galpy distance and velocity scales [default 
+                8.275, 220.]
+            validate (bool): Check that the galpy potential and pdens 
+                densfunc give the same enclosed mass, density, radial force.
+
+        Returns:
+            pot (potential.DoubleExponentialDiskPotential) - output galpy potential
+        '''
+        if densfunc is None:
+            densfunc = DoubleExponentialDisk()
+        hr, hz, amp = densfunc._parse_params(params)
+
+        if map_method == 'mass_at_scale':
+            _pot = potential.DoubleExponentialDiskPotential(amp=1., 
+                hr=hr*apu.kpc, hz=hz*apu.kpc, ro=ro, vo=vo)
+            _dmass = densfunc.mass(hr*apu.kpc, params=params, z=hz*apu.kpc)
+            _pmass = _pot.mass(hr*apu.kpc, z=hz*apu.kpc, 
+                use_physical=True).to(apu.Msun).value
+            _amp = _dmass/_pmass
+            pot = potential.DoubleExponentialDiskPotential(amp=_amp, 
+                hr=hr*apu.kpc, hz=hz*apu.kpc, ro=ro, vo=vo)
+        
+        if validate:
+            tol = 1e-8
+            rs = np.logspace(-1, 2, num=30)*apu.kpc
+            # Mass
+            gmass = np.array([ pot.mass(r).to(apu.Msun).value for r in rs ])
+            dmass = densfunc.mass(rs, params)
+            assert np.all(np.abs((gmass-dmass)/dmass) < tol)
+            # Density
+            gdens = pot.dens(rs, hz*apu.kpc).to(apu.Msun/apu.kpc**3).value
+            ddens = densfunc(rs, 0., hz*apu.kpc, params)
+            assert np.all(np.abs((gdens-ddens)/ddens) < tol)
+            # Force
+            # gforce = pot.rforce(rs, 0.).to(apu.km/apu.s/apu.Myr).value
+            # dforce = densfunc.rforce(rs, params).value
+            # assert np.all(np.abs((gforce-dforce)/dforce) < tol)
+        
+        return pot
+
 # Miyamoto-Nagai
 
 class MiyamotoNagai(AxisymmetricDensityProfile):
