@@ -831,6 +831,103 @@ class SinglePowerCutoffSpherical(SphericalDensityProfile):
 
 ### Axisymmetric density profiles
 
+# Double exponential disk
+
+class DoubleExponentialDisk(AxisymmetricDensityProfile):
+    '''DoubleExponentialDisk:
+
+    Double exponential disk density profile
+
+    The parameters of the profile are:
+        hr: Scale radius [kpc, can be an astropy quantity]
+        hz: Scale height [kpc, can be an astropy quantity]
+        amp: Amplitude [Msun/kpc^3, can be an astropy quantity]
+    '''
+
+    def __init__(self, ):
+        '''__init__:
+
+        Initialize the density profile.
+        '''
+        super(DoubleExponentialDisk, self).__init__()
+        self.n_params = 3
+        self.param_names = ['hr', 'hz', 'amp']
+    
+    def __call__(self, R, phi, z, params):
+        '''__call__:
+
+        Evaluate the density profile
+
+        Args:
+            R, phi, z (array): Arrays of galactocentric cylindrical radius, 
+                azimuth, and height above the x-y plane. Can be astropy quantities.
+            params (list): List of parameters for the density profile, see
+                class docstring.
+            
+        Returns:
+            dens (array): Array of densities in Msun/kpc^3
+        '''
+        R, phi, z = self._parse_R_phi_z_input(R, phi, z)
+        hr, hz, amp = self._parse_params(params)
+        return amp*np.exp(-R/hr)*np.exp(-np.abs(z)/hz)
+    
+    def _parse_params(self, params):
+        '''_parse_params:
+
+        Parse the parameters of the density profile.
+
+        Args:
+            params (list): List of parameters for the density profile, see
+                class docstring.
+        
+        Returns:
+            params (list): List of parameters for the density profile, see
+                class docstring.
+        '''
+        if len(params) == 2:
+            hr, hz = params
+            amp = 1.
+        elif len(params) == 3:
+            hr, hz, amp = params
+        else:
+            raise ValueError("params must have length 2 or 3")
+        if isinstance(hr, apu.Quantity):
+            hr = hr.to(apu.kpc).value
+        if isinstance(hz, apu.Quantity):
+            hz = hz.to(apu.kpc).value
+        if isinstance(amp, apu.Quantity):
+            amp = amp.to(apu.Msun/apu.kpc**3).value
+        return hr, hz, amp
+    
+    def mass(self, R, params, z=np.inf, integrate=False):
+        '''mass:
+
+        Calculate the enclosed mass of the density profile. if z is not np.inf 
+        then the slab mass is calculated, otherwise the cylindrical mass is 
+        calculated.
+
+        Args:
+            R (array): Array of galactocentric cylindrical radii in kpc, 
+                can be astropy quantity.
+            params (list): List of parameters for the density profile, see
+                class docstring.
+            z (float): Height above the x-y plane in kpc, used to calculate
+        
+        Returns:
+            mass (array): Array of enclosed masses in Msun
+        '''
+        if isinstance(R, apu.Quantity):
+            R = R.to(apu.kpc).value
+        if isinstance(z, apu.Quantity):
+            z = z.to(apu.kpc).value
+        hr, hz, amp = self._parse_params(params)
+        if integrate:
+            raise NotImplementedError("Integration not implemented")
+            # intfunc = lambda r: r*self(r, 0., 0., params=params)
+            # return 2*np.pi*scipy.integrate.quad(intfunc, 0, R)[0]
+        else:
+            return 4*np.pi*amp*hr*hz*(hr-np.exp(-R/hr)*(hr+R))*(1-np.exp(-np.abs(z)/hz))
+
 # Miyamoto-Nagai
 
 class MiyamotoNagai(AxisymmetricDensityProfile):
@@ -1002,7 +1099,7 @@ class MiyamotoNagai(AxisymmetricDensityProfile):
                 zterm = scipy.integrate.quad(zfunc, 0.0, R)[0]
                 return Rterm + zterm
         else:
-            raise NotImplementedError
+            raise NotImplementedError("mass not implemented for non-integrated case")
 
 # ----------------------------------------------------------------------------
 
