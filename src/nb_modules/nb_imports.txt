@@ -1,0 +1,52 @@
+### Imports
+
+## Basic
+import numpy as np
+import sys, os, pdb, copy, glob, time, subprocess, warnings, dill as pickle, multiprocessing
+
+## Matplotlib
+import matplotlib as mpl
+from matplotlib import pyplot as plt
+
+## Astropy
+from astropy import units as apu
+from astropy import constants as apc
+from astropy.coordinates import SkyCoord
+
+## Analysis
+import scipy.stats
+import scipy.interpolate
+import emcee
+import corner
+
+## galpy
+from galpy import orbit
+from galpy import potential
+from galpy import actionAngle as aA
+from galpy import df
+from galpy import util as gputil
+
+## Project-specific
+src_path = 'src/'
+while True:
+    if os.path.exists(src_path): break
+    if os.path.realpath(src_path).split('/')[-1] == 'tng-dfs' or os.path.realpath(src_path) == '/':
+            raise FileNotFoundError('Failed to find src/ directory.')
+    src_path = os.path.join('..',src_path)
+sys.path.insert(0,'../../src/')
+from tng_dfs import cutout as pcutout
+from tng_dfs import densprofile as pdens
+from tng_dfs import fitting as pfit
+from tng_dfs import io as pio
+from tng_dfs import kinematics as pkin
+from tng_dfs import plot as pplot
+from tng_dfs import tree as ptree
+from tng_dfs import util as putil
+
+### Notebook setup
+
+%matplotlib inline
+plt.style.use('../../src/mpl/project.mplstyle') # This must be exactly here
+%config InlineBackend.figure_format = 'retina'
+%load_ext autoreload
+%autoreload 2
