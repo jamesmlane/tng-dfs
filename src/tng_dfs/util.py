@@ -24,6 +24,7 @@ import astropy.units as apu
 import pdb
 
 __snap_zs__ = None
+_HUBBLE_PARAM = 0.6774 # Planck 2015 value
 
 # ----------------------------------------------------------------------------
 
@@ -157,8 +158,8 @@ def parse_config_dict(cdict,keyword):
 
 # Standard notebook preparation
 
-def prepare_mwsubs(mw_analog_dir,h=0.7,mw_mass_range=[5,7],return_vars=False,
-    force_mwsubs=False):
+def prepare_mwsubs(mw_analog_dir,h=_HUBBLE_PARAM,mw_mass_range=[5,7],
+    return_vars=False,force_mwsubs=False):
     '''prepare_mwsubs:
 
     Do some standard prep: fetch simulation info with TNG API, load the 
@@ -289,7 +290,7 @@ def get(path, params=None, timeout=10, directory='./', timeit=False):
 
 # Unit conversion
 
-def mass_code_to_physical(m,h=0.7,e10=True):
+def mass_code_to_physical(m,h=_HUBBLE_PARAM,e10=True):
     '''mass_code_to_physical:
     Convert a mass in Illustris-TNG code units to physical units.
     
@@ -306,7 +307,7 @@ def mass_code_to_physical(m,h=0.7,e10=True):
         m_phys *= 1e10
     return m_phys
 
-def mass_physical_to_code(m,h=0.7,e10=True):
+def mass_physical_to_code(m,h=_HUBBLE_PARAM,e10=True):
     '''mass_physical_to_code:
     Convert a mass in physical units to Illustris-TNG code units.
     
@@ -323,7 +324,7 @@ def mass_physical_to_code(m,h=0.7,e10=True):
         m_code /= 1e10
     return m_code
 
-def distance_code_to_physical(d,h=0.7,z=0.):
+def distance_code_to_physical(d,h=_HUBBLE_PARAM,z=0.):
     '''distance_code_to_physical:
     Convert a comoving distance in Illustris-TNG code units to phyical, 
     non-comoving units.
@@ -339,7 +340,7 @@ def distance_code_to_physical(d,h=0.7,z=0.):
     a = 1./(z+1)
     return d*a/h
 
-def distance_physical_to_code(d,h=0.7,z=0.):
+def distance_physical_to_code(d,h=_HUBBLE_PARAM,z=0.):
     '''distance_physical_to_code:
     Convert a physical, non-comoving distance to comoving Illustris-TNG code 
     units.
@@ -415,7 +416,7 @@ def energy_physical_to_code(e,z=0.):
     a = 1./(z+1.)
     return e/a
 
-def angular_momentum_code_to_physical(j,h=0.7,z=0):
+def angular_momentum_code_to_physical(j,h=_HUBBLE_PARAM,z=0):
     '''angular_momentum_code_to_physical:
     Convert a comoving angular momentum in Illustris-TNG code units to physical,
     non-comoving units.
@@ -432,7 +433,7 @@ def angular_momentum_code_to_physical(j,h=0.7,z=0):
     a = 1./(z+1.)
     return j*a**1.5/h
 
-def angular_momentum_physical_to_code(j,h=0.7,z=0):
+def angular_momentum_physical_to_code(j,h=_HUBBLE_PARAM,z=0):
     '''angular_momentum_physical_to_code:
     Convert a physical, non-comoving angular momentum in units to comoving 
     Illustris-TNG code units.
