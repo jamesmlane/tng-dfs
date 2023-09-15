@@ -899,7 +899,7 @@ class DoubleExponentialDisk(AxisymmetricDensityProfile):
             amp = amp.to(apu.Msun/apu.kpc**3).value
         return hr, hz, amp
     
-    def mass(self, R, params, z=np.inf, integrate=False):
+    def mass(self, R, params, zmax=np.inf, integrate=False):
         '''mass:
 
         Calculate the enclosed mass of the density profile. if z is not np.inf 
@@ -911,22 +911,33 @@ class DoubleExponentialDisk(AxisymmetricDensityProfile):
                 can be astropy quantity.
             params (list): List of parameters for the density profile, see
                 class docstring.
-            z (float): Height above the x-y plane in kpc, used to calculate
+            zmax (float): Height above the x-y plane in kpc, used to calculate
+                slab mass if not np.inf.
         
         Returns:
             mass (array): Array of enclosed masses in Msun
         '''
         if isinstance(R, apu.Quantity):
             R = R.to(apu.kpc).value
-        if isinstance(z, apu.Quantity):
-            z = z.to(apu.kpc).value
+        if isinstance(zmax, apu.Quantity):
+            zmax = zmax.to(apu.kpc).value
         hr, hz, amp = self._parse_params(params)
         if integrate:
-            raise NotImplementedError("Integration not implemented")
-            # intfunc = lambda r: r*self(r, 0., 0., params=params)
-            # return 2*np.pi*scipy.integrate.quad(intfunc, 0, R)[0]
+            # raise NotImplementedError("Integration not implemented")
+            Rintfunc = lambda r: r*self(r, 0., 0., params=params)
+            Zintfunc = lambda z: self(0., 0., z, params=params)
+            return 4*np.pi*scipy.integrate.quad(Rintfunc, 0, R)[0]*\
+                scipy.integrate.quad(Zintfunc, 0, zmax)[0]
         else:
-            return 4*np.pi*amp*hr*hz*(hr-np.exp(-R/hr)*(hr+R))*(1-np.exp(-np.abs(z)/hz))
+            if np.isinf(zmax):
+                zterm = 1.
+            else:
+                zterm = (1-np.exp(-np.abs(zmax)/hz))
+            if np.isinf(R):
+                rterm = hr
+            else:
+                rterm = (hr-np.exp(-R/hr)*(hr+R))
+            return 4*np.pi*amp*hr*hz*rterm*zterm
 
     def densfunc_to_pot(self, params, map_method='mass_at_scale', densfunc=None,
         ro=_ro, vo=_vo, validate=True):
@@ -961,7 +972,7 @@ class DoubleExponentialDisk(AxisymmetricDensityProfile):
         if map_method == 'mass_at_scale':
             _pot = potential.DoubleExponentialDiskPotential(amp=1., 
                 hr=hr*apu.kpc, hz=hz*apu.kpc, ro=ro, vo=vo)
-            _dmass = densfunc.mass(hr*apu.kpc, params=params, z=hz*apu.kpc)
+            _dmass = densfunc.mass(hr*apu.kpc, params=params, zmax=hz*apu.kpc)
             _pmass = _pot.mass(hr*apu.kpc, z=hz*apu.kpc, 
                 use_physical=True).to(apu.Msun).value
             _amp = _dmass/_pmass
