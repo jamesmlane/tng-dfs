@@ -607,6 +607,29 @@ def parse_astropy_quantity(q, unit):
 
 # ----------------------------------------------------------------------------
 
+# Pathing functions
+
+def get_cutout_filename(mw_analog_dir, snapnum, subfind_id):
+    '''get_cutout_filename:
+
+    Get the filename of a cutout file for a given subhalo at a given snapshot
+
+    Args:
+        mw_analog_dir (str) - Directory for MW Analog data
+        snapnum (int) - Snapshot number
+        subfind_id (int) - Subfind ID
+
+    Returns:
+        fname (str) - Filename of the cutout file
+    '''
+    snap_path = mw_analog_dir+'cutouts/snap_'+str(snapnum)+'/'
+    fname = snap_path+'cutout_'+str(subfind_id)+'.hdf5'
+    if not os.path.isfile(fname):
+        raise IOError('File '+fname+' does not exist')
+    return fname
+
+# ----------------------------------------------------------------------------
+
 # Misc. functions
 
 def find_contiguous(mask):
