@@ -13,8 +13,8 @@
 __author__ = "James Lane"
 
 ### Imports
-from . import util
-from . import cutout
+from . import util as putil
+from . import cutout as pcutout
 import numpy as np
 import warnings
 import h5py
@@ -542,7 +542,7 @@ class SublinkTree():
             assert key in f.keys(), 'Key not found in hdf5 file'
             output = f[key]
             if ptype is not None:
-                indx = util.ptype_to_indx(ptype)
+                indx = putil.ptype_to_indx(ptype)
                 output = output[:,indx]
             if numpy_wrap:
                 output = np.asarray(output)
@@ -773,10 +773,7 @@ class TreeInfo(object):
                 raise ValueError('Must provide either subfind_id or have '
                     'subfind_id/snapnum loaded as attributes from the tree '
                     'file (provide tree_filename)')
-        snap_path = mw_analog_dir+'cutouts/snap_'+str(snapnum)+'/'
-        fname = snap_path+'cutout_'+str(subfind_id)+'.hdf5'
-        if not os.path.isfile(fname):
-            raise IOError('File '+fname+' does not exist')
+        fname = putil.get_cutout_filename(mw_analog_dir,snapnum,subfind_id)
         return fname
     
     def get_unique_particle_ids(self,ptype,mw_analog_dir=None,data_dir=None,
@@ -811,7 +808,7 @@ class TreeInfo(object):
             # print(snap)
             # Get the cutout file for this snapshot
             fname = self.get_cutout_filename(mw_analog_dir,snap)
-            co = cutout.TNGCutout(fname)
+            co = pcutout.TNGCutout(fname)
             # Get the unique particle IDs for this snapshot
             try:
                 pid = co.get_property(ptype,'ParticleIDs').astype(int)
