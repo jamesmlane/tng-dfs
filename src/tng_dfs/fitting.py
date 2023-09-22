@@ -449,6 +449,8 @@ def logprior_dens(densfunc, params):
         # hz_max = 100.
         # prior_hz = scipy.stats.loguniform.pdf(hz, hz_min, hz_max)
         # return np.log(prior_hR*prior_hz)
+    if isinstance(densfunc, pdens.MiyamotoNagaiDisk):
+        return 0
     # Handle composite density profiles recursively
     if isinstance(densfunc,pdens.CompositeDensityProfile):
         prior = 0.
@@ -497,6 +499,11 @@ def domain_prior_dens(densfunc, params):
         hR,hz,amp = params
         if hR <= 0: return False
         if hz <= 0: return False
+        if amp <= 0: return False
+    if isinstance(densfunc, pdens.MiyamotoNagaiDisk):
+        a,b,amp = params
+        if a <= 0: return False
+        if b <= 0: return False
         if amp <= 0: return False
     # Handle composite density profiles recursively
     if isinstance(densfunc,pdens.CompositeDensityProfile):
