@@ -452,10 +452,12 @@ def logprior_dens(densfunc, params):
     # Handle composite density profiles recursively
     if isinstance(densfunc,pdens.CompositeDensityProfile):
         prior = 0.
+        done_n_params = 0
         for i in range(densfunc.n_densprofiles):
             n_params = densfunc.densprofiles[i].n_params
             prior += logprior_dens(densfunc.densprofiles[i],
-                params=params[i*n_params:(i+1)*n_params])
+                params=params[done_n_params:(done_n_params+n_params)])
+            done_n_params += n_params
         return prior
     # if densfunc.__name__ == 'spherical':
     #     prior = scipy.stats.norm.pdf(params[0], loc=2.5, scale=1)
@@ -498,11 +500,13 @@ def domain_prior_dens(densfunc, params):
         if amp <= 0: return False
     # Handle composite density profiles recursively
     if isinstance(densfunc,pdens.CompositeDensityProfile):
+        done_n_params = 0
         for i in range(densfunc.n_densprofiles):
             n_params = densfunc.densprofiles[i].n_params
             if not domain_prior_dens(densfunc.densprofiles[i], 
-                params=params[i*n_params:(i+1)*n_params]):
+                params=params[done_n_params:(done_n_params+n_params)]):
                 return False
+            done_n_params += n_params
     return True
 
 def _multiprocessing_init_dens(_densfunc, _R, _phi, _z, _mass, 
