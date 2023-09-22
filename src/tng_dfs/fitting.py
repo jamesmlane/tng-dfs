@@ -336,7 +336,7 @@ def mloglike_dens(*args,**kwargs):
     return -loglike_dens(*args,**kwargs)
 
 def loglike_dens(params, densfunc, R, phi, z, mass=None, usr_log_prior=None, 
-    usr_log_prior_params=None, effvol_params=[], parts=False):
+    usr_log_prior_params=None, effvol_params=[], remove_nan=True, parts=False):
     '''loglike_dens:
     
     Log likelihood function for fitting a density profile
@@ -385,6 +385,8 @@ def loglike_dens(params, densfunc, R, phi, z, mass=None, usr_log_prior=None,
     # logeffvol = np.log(effvol)
     # Evaluate the log likelihood
     loglike = np.sum(logdens) - effvol + logprior + usrlogprior
+    if remove_nan and np.isnan(loglike):
+        return -np.inf
     if parts:
         return loglike, np.sum(logdens), effvol, logprior, usrlogprior
     else:
