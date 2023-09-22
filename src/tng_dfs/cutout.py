@@ -421,8 +421,8 @@ class TNGCutout():
     ### Centering and Rectification ###
 
     def center_and_rectify(self,cen_ptype='PartType4', vcen_ptype='PartType4', 
-        rot_ptype='PartType0', cen_scheme='ssc', vcen_scheme='bounded_vcom',
-        rot_scheme='bounded_L', **kwargs):
+        rot_ptype='PartType4', cen_scheme='ssc', vcen_scheme='bounded_vcom',
+        rot_scheme='bounded_L', cen_kwargs={}, vcen_kwargs={}, rot_kwargs={}):
         '''center_and_rectify:
         
         Center the simulation on the primary subhalo and rectify the coordinates 
@@ -463,9 +463,9 @@ class TNGCutout():
                                             internal=True)
             cen_masses = self.get_masses(cen_ptype, physical=False, 
                                         internal=True)
-            self._cen = self.find_position_center(cen_coords, cen_masses, 
-                scheme=cen_scheme, **kwargs)
             self._cen_ptype = cen_ptype
+            self._cen = self.find_position_center(cen_coords, cen_masses, 
+                scheme=cen_scheme, cen_kwargs=cen_kwargs)
             self._cen_is_set = True
                                           
         # Determine primary subhalo velocity offset
@@ -479,9 +479,9 @@ class TNGCutout():
                                             internal=True)
             vcen_masses = self.get_masses(vcen_ptype, physical=False, 
                                         internal=True)
-            self._vcen = self.find_velocity_center(vcen_coords, vcen_vels, 
-                vcen_masses, scheme=vcen_scheme, **kwargs)
             self._vcen_ptype = vcen_ptype
+            self._vcen = self.find_velocity_center(vcen_coords, vcen_vels, 
+                vcen_masses, scheme=vcen_scheme, vcen_kwargs=vcen_kwargs)
             self._vcen_is_set = True
         
         # Determine rotation matrix
@@ -495,13 +495,13 @@ class TNGCutout():
                                             internal=True)
             rot_masses = self.get_masses(rot_ptype, physical=False, 
                                         internal=True)
-            self._rot = self.find_rotation_matrix(rot_coords, rot_vels, rot_masses, 
-                scheme=rot_scheme, **kwargs)
             self._rot_ptype = rot_ptype
+            self._rot = self.find_rotation_matrix(rot_coords, rot_vels, 
+                rot_masses, scheme=rot_scheme, rot_kwargs=rot_kwargs)
             self._rot_is_set = True
         return None 
     
-    def find_position_center(self,coords,masses,scheme='ssc',**kwargs):
+    def find_position_center(self,coords,masses,scheme='ssc',cen_kwargs={}):
         '''find_position_center:
         
         Wrapper for determining the positional center of the subhalo based on a 
@@ -511,17 +511,18 @@ class TNGCutout():
             coords (np.array) - coordinates in code units
             masses (np.array) - masses in code units
             scheme (str) - Scheme, see above [default 'ssc']
+            cen_kwargs (dict) - Keyword arguments to pass to the scheme
         
         Returns:
             cen (np.array) - length 3 array representing the center of the 
                 subhalo in code units.
         '''
         if scheme == 'ssc':
-            cen = self._find_position_center_ssc(coords,masses,**kwargs)
+            cen = self._find_position_center_ssc(coords,masses,**cen_kwargs)
         return cen
     
-    def _find_position_center_ssc(self,coords,masses,shrink_factor=0.7,
-                                  min_particles=100,max_niter=1000,**kwargs):
+    def _find_position_center_ssc(self,coords,masses,shrink_factor=0.9,
+                                  min_particles=100,max_niter=10000):
         '''_find_position_center_ssc:
         
         Use the shrinking-sphere center algorithm of Power+ (2003) to 
@@ -535,20 +536,12 @@ class TNGCutout():
         
         Args:
             shrink_factor (float) - Factor to shrink the sphere after each 
-                iteration of the algorithm [default 0.7]
+                iteration of the algorithm [default 0.9]
             min_particles (int) - When this number of particles is contained 
                 within the shrinking sphere then terminate the algorithm 
                 [default 100]
             max_niter (int) - Maximum number of iterations [default 1000]
-        '''
-        # Parse kwargs
-        if 'shrink_factor' in kwargs:
-            shrink_factor = kwargs['shrink_factor']
-        if 'min_particles' in kwargs:
-            min_particles = kwargs['min_particles']
-        if 'max_niter' in kwargs:
-            max_niter = kwargs['max_niter']
-        
+        '''        
         # Initialize variables
         cen = np.average(coords,axis=0,weights=masses)
         cen_arr = [cen,]
@@ -576,7 +569,7 @@ class TNGCutout():
         return cen
     
     def find_velocity_center(self,coords,vels,masses,scheme='bounded_vcom',
-                             **kwargs):
+                             vcen_kwargs={}):
         '''find_velocity_center:
         
         Wrapper for determining the net velocity of the subhalo based on a 
@@ -594,11 +587,11 @@ class TNGCutout():
         '''
         if scheme == 'bounded_vcom':
             vcen = self._find_velocity_center_bounded_vcom(coords,vels,masses,
-                **kwargs)
+                **vcen_kwargs)
         return vcen
     
-    def _find_velocity_center_bounded_vcom(self,coords,vels,masses,rmin=0.,
-                                          rmax=5.,**kwargs):
+    def _find_velocity_center_bounded_vcom(self,coords,vels,masses,rmin=None,
+                                           rmax=None):
         '''_find_velocity_center_bounded_vcom:
         
         Determine the net velocity of the subhalo by calculating the
@@ -608,13 +601,17 @@ class TNGCutout():
             rmin (float) - Minimum radius of particles to consider in kpc
             rmax (float) - Maximum radius of particles to consider in kpc
         '''
-        # Parse kwargs, convert to code units
-        if 'vcen_rmin' in kwargs:
-            rmin = kwargs['vcen_rmin']
-        if 'vcen_rmax' in kwargs:
-            rmax = kwargs['vcen_rmax']
-        rmin = util.distance_physical_to_code(rmin,h=self.h,z=self.z)
-        rmax = util.distance_physical_to_code(rmax,h=self.h,z=self.z)
+        # Parse kwargs or fill in with half-mass radius, convert to code units
+        if rmin is None:
+            rmin = 0.
+        else:
+            rmin = util.distance_physical_to_code(rmin,h=self.h,z=self.z)
+        
+        if rmax is None:
+            rmax = self.get_half_mass_radius(self._vcen_ptype, physical=False, 
+                internal=True)
+        else:
+            rmax = util.distance_physical_to_code(rmax,h=self.h,z=self.z)
         
         # Find mass-weighted average velocity within radial bounds
         rs = np.sqrt(np.sum(np.square(coords),axis=1))
@@ -627,7 +624,7 @@ class TNGCutout():
         return vcen
     
     def find_rotation_matrix(self,coords,vels,masses,scheme='bounded_L',
-                             **kwargs):
+                             rot_kwargs={}):
         '''find_rotation_matrix:
         
         Wrapper for determining rotation matrix based on a supplied scheme.
@@ -645,11 +642,11 @@ class TNGCutout():
         '''
         if scheme == 'bounded_L':
             rot = self._find_rotation_matrix_bounded_L(coords,vels,masses,
-                **kwargs)
+                **rot_kwargs)
         return rot
     
-    def _find_rotation_matrix_bounded_L(self,coords,vels,masses,rmin=5.,
-                                        rmax=20.,**kwargs):
+    def _find_rotation_matrix_bounded_L(self,coords,vels,masses,rmin=None,
+                                        rmax=None):
         '''_find_rotation_matrix_bounded_L:
         
         Determine the rotation matrix by calculating the total angular momentum 
@@ -661,13 +658,18 @@ class TNGCutout():
             rmin (float) - Minimum radius of particles to consider
             rmax (float) - Maximum radius of particles to consider
         '''
-        # Parse kwargs, convert to code units
-        if 'rot_rmin' in kwargs:
-            rmin = kwargs['rot_rmin']
-        if 'rot_rmax' in kwargs:
-            rmax = kwargs['rot_rmax']
-        rmin = util.distance_physical_to_code(rmin,h=self.h,z=self.z)
-        rmax = util.distance_physical_to_code(rmax,h=self.h,z=self.z)
+        # Parse kwargs or fill in with half-mass radius, convert to code units
+        if rmin is None:
+            rmin = 0.5*self.get_half_mass_radius(self._rot_ptype, physical=False, 
+                internal=True)
+        else:
+            rmin = util.distance_physical_to_code(rmin,h=self.h,z=self.z)
+        
+        if rmax is None:
+            rmax = 2*self.get_half_mass_radius(self._rot_ptype, physical=False, 
+                internal=True)
+        else:
+            rmax = util.distance_physical_to_code(rmax,h=self.h,z=self.z)
         
         # Calculate angular momentum and rotation
         rs = np.sqrt(np.sum(np.square(coords),axis=1))
