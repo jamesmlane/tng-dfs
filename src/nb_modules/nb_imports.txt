@@ -2,7 +2,9 @@
 
 ## Basic
 import numpy as np
-import sys, os, pdb, copy, glob, time, subprocess, warnings, dill as pickle, multiprocessing
+import sys, os
+import h5py, dill as pickle
+import pdb, copy, glob, time, subprocess, warnings, multiprocessing
 
 ## Matplotlib
 import matplotlib as mpl
@@ -30,10 +32,10 @@ from galpy import util as gputil
 src_path = 'src/'
 while True:
     if os.path.exists(src_path): break
-    if os.path.realpath(src_path).split('/')[-1] == 'tng-dfs' or os.path.realpath(src_path) == '/':
+    if os.path.realpath(src_path).split('/')[-1] in ['tng-dfs','/']:
             raise FileNotFoundError('Failed to find src/ directory.')
     src_path = os.path.join('..',src_path)
-sys.path.insert(0,'../../src/')
+sys.path.insert(0,src_path)
 from tng_dfs import cutout as pcutout
 from tng_dfs import densprofile as pdens
 from tng_dfs import fitting as pfit
@@ -46,7 +48,7 @@ from tng_dfs import util as putil
 ### Notebook setup
 
 %matplotlib inline
-plt.style.use('../../src/mpl/project.mplstyle') # This must be exactly here
+plt.style.use(os.path.join(src_path,'mpl/project.mplstyle')) # This must be exactly here
 %config InlineBackend.figure_format = 'retina'
 %load_ext autoreload
 %autoreload 2
