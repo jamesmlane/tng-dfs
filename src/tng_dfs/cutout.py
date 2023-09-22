@@ -381,6 +381,43 @@ class TNGCutout():
         orbs = orbit.Orbit(vxvv,ro=ro,vo=vo)
         return orbs
 
+    def get_half_mass_radius(self,ptype,physical=True,internal=False):
+        '''get_half_mass_radius:
+
+        Get the half-mass radius for the for the particles in the cutout
+        
+        Args:
+            co (TNGCutout): The cutout object
+            ptype (str): The particle type to get the half-mass radius for
+
+        Returns:
+            half_mass_radius (float): The half-mass radius in kpc
+        '''
+        # Assume centered and rotated
+        if not self._cen_is_set:
+            raise RuntimeError('Subhalo has not been centered, '+
+                'run center_and_rectify()')
+
+        # Get the orbits
+        masses = self.get_masses(ptype,internal=True)
+        coords = self.get_coordinates(ptype,internal=True)
+        rs = np.sqrt(np.sum(np.square(coords),axis=1))
+        
+        # Get the half-mass radius
+        rs_sorted = np.sort(rs)
+        masses_sorted = masses[np.argsort(rs)]
+        masses_cumsum = np.cumsum(masses_sorted)
+        hm = masses_cumsum[-1]/2
+        hm_indx = np.argmin(np.abs(masses_cumsum-hm))
+        hmr = rs_sorted[hm_indx]
+
+        if physical:
+            hmr = util.distance_code_to_physical(hmr,z=self.z)
+        if _ASTROPY and physical and not internal:
+            hmr *= (apu.kpc)
+
+        return hmr
+
     ### Centering and Rectification ###
 
     def center_and_rectify(self,cen_ptype='PartType4', vcen_ptype='PartType4', 
