@@ -159,7 +159,8 @@ def parse_config_dict(cdict,keyword):
 # Standard notebook preparation
 
 def prepare_mwsubs(mw_analog_dir,h=_HUBBLE_PARAM,mw_mass_range=[5,7],
-    return_vars=False,force_mwsubs=False):
+    return_vars=False,force_mwsubs=False,bulge_disk_fraction_cuts=False,
+    bulge_disk_fraction_id_filename='bulge_disk_fraction_z0sid.npy'):
     '''prepare_mwsubs:
 
     Do some standard prep: fetch simulation info with TNG API, load the 
@@ -173,6 +174,11 @@ def prepare_mwsubs(mw_analog_dir,h=_HUBBLE_PARAM,mw_mass_range=[5,7],
             from config, default [5,7]
         return_vars (bool) - Return all variables as a dict instead of just 
             mwsubs.
+        bulge_disk_fraction_cuts (bool) - Apply cuts to the sample based on
+            the bulge and disk fraction analysis, default False
+        bulge_disk_fraction_id_filename (str) - Filename for the bulge and
+            disk fraction IDs. Will be queried within mw_analog_dir/masks/ . 
+            Default 'bulge_disk_fraction_z0sid.npy'
     
     Returns:
         mwsubs (numpy recarray) - recarray  of MW analog subhalo information
@@ -228,6 +234,18 @@ def prepare_mwsubs(mw_analog_dir,h=_HUBBLE_PARAM,mw_mass_range=[5,7],
     # Convert to numpy recarray 
     mwsubs_dict = copy.deepcopy(mwsubs)
     mwsubs = subhalo_list_to_recarray(mwsubs)
+
+    if bulge_disk_fraction_cuts:
+        print('Cutting on bulge and disk fractions')
+        ids = mwsubs['id']
+        gid_filename = os.path.join(mw_analog_dir, 'masks/', 
+            bulge_disk_fraction_id_filename)
+        gids = np.load(gid_filename)
+        mask = np.in1d(ids,gids)
+        mwsubs = mwsubs[mask]
+        mwsubs_dict = [mwsubs_dict[i] for i in range(n_mw) if mask[i]]
+        n_mw = len(mwsubs)
+        print('Cut to ',n_mw,' subhalos')
 
     if return_vars:
         vars = {'baseURL':baseURL,'sim_names':sim_names,

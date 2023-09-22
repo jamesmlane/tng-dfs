@@ -7,7 +7,8 @@ data_dir,mw_analog_dir,ro,vo,zo,h,mw_mass_range = \
 
 # MW Analog 
 mwsubs,mwsubs_vars = putil.prepare_mwsubs(mw_analog_dir,h=h,
-    mw_mass_range=mw_mass_range,return_vars=True,force_mwsubs=False)
+    mw_mass_range=mw_mass_range,return_vars=True,force_mwsubs=False,
+    bulge_disk_fraction_cuts=True)
 
 # Figure path
 fig_dir = './fig/sample/'
