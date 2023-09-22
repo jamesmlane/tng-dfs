@@ -240,7 +240,12 @@ def prepare_mwsubs(mw_analog_dir,h=_HUBBLE_PARAM,mw_mass_range=[5,7],
         ids = mwsubs['id']
         gid_filename = os.path.join(mw_analog_dir, 'masks/', 
             bulge_disk_fraction_id_filename)
-        gids = np.load(gid_filename)
+        try:
+            gids = np.load(gid_filename)
+        except FileNotFoundError:
+            print('Could not find file '+gid_filename)
+            print('Skipping bulge and disk fraction cuts')
+            bulge_disk_fraction_cuts = False
         mask = np.in1d(ids,gids)
         mwsubs = mwsubs[mask]
         mwsubs_dict = [mwsubs_dict[i] for i in range(n_mw) if mask[i]]
