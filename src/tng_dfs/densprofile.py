@@ -921,6 +921,14 @@ class DoubleExponentialDisk(AxisymmetricDensityProfile):
             R = R.to(apu.kpc).value
         if isinstance(zmax, apu.Quantity):
             zmax = zmax.to(apu.kpc).value
+        if isinstance(R, (np.ndarray, list)) or isinstance(zmax, (np.ndarray, list)):
+            if not isinstance(R, (np.ndarray, list)): 
+                R = np.ones_like(zmax)*R
+            if not isinstance(zmax, (np.ndarray, list)): 
+                zmax = np.ones_like(R)*zmax
+            return np.array([ self.mass(r, params, z, integrate=integrate) 
+                for r, z in zip(R, zmax) ])
+    
         hr, hz, amp = self._parse_params(params)
         if integrate:
             # raise NotImplementedError("Integration not implemented")
