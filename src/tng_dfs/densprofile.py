@@ -999,8 +999,8 @@ class DoubleExponentialDisk(AxisymmetricDensityProfile):
 
 # Miyamoto-Nagai
 
-class MiyamotoNagai(AxisymmetricDensityProfile):
-    '''MiyamotoNagai:
+class MiyamotoNagaiDisk(AxisymmetricDensityProfile):
+    '''MiyamotoNagaiDisk:
 
     Miyamoto-Nagai disk density profile
 
@@ -1015,7 +1015,7 @@ class MiyamotoNagai(AxisymmetricDensityProfile):
 
         Initialize the density profile.
         '''
-        super(MiyamotoNagai, self).__init__()
+        super(MiyamotoNagaiDisk, self).__init__()
         self.n_params = 3
         self.param_names = ['a', 'b', 'amp']
     
@@ -1117,7 +1117,7 @@ class MiyamotoNagai(AxisymmetricDensityProfile):
         _zforce = _mr2*astropy.constants.G
         return _zforce.to(apu.km/apu.s/apu.Myr)
 
-    def mass(self, R, params, z=np.inf, integrate=False):
+    def mass(self, R, params, zmax=np.inf, integrate=True):
         '''mass:
         
         Calculate the enclosed mass of the density profile. z can be optionally 
@@ -1129,28 +1129,28 @@ class MiyamotoNagai(AxisymmetricDensityProfile):
                 can be astropy quantity.
             params (list): List of parameters for the density profile, see
                 class docstring.
-            z (array): Array of heights above the x-y plane in kpc, if None 
+            zmax (array): Array of heights above the x-y plane in kpc, if None 
                 then integrate from -inf to inf. Can be astropy quantity 
                 [default: None] 
         
         Returns:
             mass (array) - Enclosed mass in Msun. 
         '''
-
+        if not integrate: integrate=True
         if isinstance(R, apu.Quantity):
             R = R.to(apu.kpc).value
-        if isinstance(z, apu.Quantity):
-            z = z.to(apu.kpc).value
+        if isinstance(zmax, apu.Quantity):
+            zmax = zmax.to(apu.kpc).value
         a, b, amp = self._parse_params(params)
         if integrate:
             if isinstance(R, (np.ndarray,list)):
                 out = np.zeros_like(R)
-                if not isinstance(z, (np.ndarray,list)):
-                    z = np.ones_like(R)*z
+                if not isinstance(zmax, (np.ndarray,list)):
+                    zmax = np.ones_like(R)*zmax
                 for i in range(len(R)):
-                    out[i] = self.mass(R[i], params, z=z[i], integrate=True)
+                    out[i] = self.mass(R[i], params, zmax=zmax[i], integrate=True)
                 return out
-            if z is None:  # Within spherical shell
+            if zmax is None:  # Within spherical shell
                 raise NotImplementedError
                 # def _integrand(theta):
                 #     tz = R * np.cos(theta)
@@ -1158,15 +1158,18 @@ class MiyamotoNagai(AxisymmetricDensityProfile):
                 #     return self.rforce(tR, tz)*np.sin(theta)
                 # return -(R**2.0)*scipy.integrate.quad(_integrand, 0.0, np.pi)[0]/2.0
             else:  # Within disk at <R, -z --> z
-                if np.isinf(z):
-                    _z = 10000*b
+                if np.isinf(zmax):
+                    _z = 1000000*b
                 else:
-                    _z = z
-                Rfunc = lambda x: self.Rforce(R, x, params=params)
-                Rterm = -R*scipy.integrate.quad(Rfunc, -_z, _z)[0]/2.0
-                zfunc = lambda x: self.zforce(x, _z, params=params)
-                zterm = scipy.integrate.quad(zfunc, 0.0, R)[0]
-                return Rterm + zterm
+                    _z = zmax
+                if R > 1e5*a and _z > 1e5*b:
+                    return amp
+                Rfunc = lambda x: self.Rforce(R, x, params=params).value
+                Rterm = -R*scipy.integrate.quad(Rfunc, 0, _z)[0]
+                zfunc = lambda x: x * self.zforce(x, _z, params=params).value
+                zterm = -scipy.integrate.quad(zfunc, 0.0, R)[0]
+                tterm = (Rterm + zterm)*apu.km/apu.s/apu.Myr*apu.kpc**2
+                return (tterm/astropy.constants.G).to(apu.Msun).value
         else:
             raise NotImplementedError("mass not implemented for non-integrated case")
     
