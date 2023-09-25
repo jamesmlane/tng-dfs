@@ -245,7 +245,7 @@ class TwoPowerSpherical(SphericalDensityProfile):
                 3-alpha, beta-alpha, 4-alpha, -r/a)/(3-alpha)
     
     def densfunc_to_pot(self, params, map_method='mass_at_a', densfunc=None,
-        ro=_ro, vo=_vo, validate=True):
+        ro=_ro, vo=_vo, validate=True, pot_kwargs={}):
         '''densfunc_to_pot:
 
         Convert a pdens.TwoPowerSpherical instance to a 
@@ -272,16 +272,16 @@ class TwoPowerSpherical(SphericalDensityProfile):
 
         if map_method == 'mass_at_a':
             _pot = potential.TwoPowerSphericalPotential(amp=1., a=a*apu.kpc, 
-                alpha=alpha, beta=beta, ro=ro, vo=vo)
+                alpha=alpha, beta=beta, ro=ro, vo=vo, **pot_kwargs)
             _dmass = densfunc.mass(a*apu.kpc, params=params)
             _pmass = _pot.mass(a*apu.kpc, use_physical=True).to(apu.Msun).value
             _amp = _dmass/_pmass
             pot = potential.TwoPowerSphericalPotential(amp=_amp, a=a*apu.kpc, 
-                alpha=alpha, beta=beta, ro=ro, vo=vo)
+                alpha=alpha, beta=beta, ro=ro, vo=vo, **pot_kwargs)
         
         if validate:
             tol = 1e-8
-            rs = np.logspace(-1, 2, num=30)*apu.kpc
+            rs = np.logspace(-1, np.log10(5*a), num=30)*apu.kpc
             # Mass
             gmass = pot.mass(rs).to(apu.Msun).value
             dmass = densfunc.mass(rs, params)
@@ -383,7 +383,7 @@ class NFWSpherical(SphericalDensityProfile):
             return 4*np.pi*amp*(a**3)*(np.log(1+r/a)-(r/a)/(1+r/a))
         
     def densfunc_to_pot(self, params, map_method='mass_at_a', densfunc=None,
-        ro=_ro, vo=_vo, validate=True):
+        ro=_ro, vo=_vo, validate=True, pot_kwargs={}):
         '''densfunc_to_pot:
 
         Convert a pdens.NFWSpherical instance to a galpy potential.NFWPotential 
@@ -411,15 +411,17 @@ class NFWSpherical(SphericalDensityProfile):
         a, amp = densfunc._parse_params(params)
 
         if map_method == 'mass_at_a':
-            _pot = potential.NFWPotential(amp=1., a=a*apu.kpc, ro=ro, vo=vo)
+            _pot = potential.NFWPotential(amp=1., a=a*apu.kpc, ro=ro, vo=vo, 
+                **pot_kwargs)
             _dmass = densfunc.mass(a*apu.kpc, params=params)
             _pmass = _pot.mass(a*apu.kpc, use_physical=True).to(apu.Msun).value
             _amp = _dmass/_pmass
-            pot = potential.NFWPotential(amp=_amp, a=a*apu.kpc, ro=ro, vo=vo)
+            pot = potential.NFWPotential(amp=_amp, a=a*apu.kpc, ro=ro, vo=vo, 
+                **pot_kwargs)
         
         if validate:
             tol = 1e-8
-            rs = np.logspace(-1, 2, num=30)*apu.kpc
+            rs = np.logspace(-1, np.log10(10*a), num=30)*apu.kpc
             # Mass
             gmass = pot.mass(rs).to(apu.Msun).value
             dmass = densfunc.mass(rs, params)
@@ -774,7 +776,7 @@ class SinglePowerCutoffSpherical(SphericalDensityProfile):
                     return amp*out[0]
     
     def densfunc_to_pot(self, params, map_method='mass_at_rc', densfunc=None,
-        ro=_ro, vo=_vo, validate=True):
+        ro=_ro, vo=_vo, validate=True, pot_kwargs={}):
         '''densfunc_to_pot:
 
         Convert a pdens.SinglePowerCutoffSpherical instance to a 
@@ -804,16 +806,16 @@ class SinglePowerCutoffSpherical(SphericalDensityProfile):
 
         if map_method == 'mass_at_rc':
             _pot = potential.PowerSphericalPotentialwCutoff(amp=1., alpha=alpha, 
-                rc=rc*apu.kpc, ro=ro, vo=vo)
+                rc=rc*apu.kpc, ro=ro, vo=vo, **pot_kwargs)
             _dmass = densfunc.mass(rc*apu.kpc, params=params)
             _pmass = _pot.mass(rc*apu.kpc, use_physical=True).to(apu.Msun).value
             _amp = _dmass/_pmass
             pot = potential.PowerSphericalPotentialwCutoff(amp=_amp, 
-                alpha=alpha, rc=rc*apu.kpc, ro=ro, vo=vo)
+                alpha=alpha, rc=rc*apu.kpc, ro=ro, vo=vo, **pot_kwargs)
         
         if validate:
             tol = 1e-8
-            rs = np.logspace(-1, 2, num=30)*apu.kpc
+            rs = np.logspace(-1, np.log10(4*rc), num=30)*apu.kpc
             # Mass
             gmass = pot.mass(rs).to(apu.Msun).value
             dmass = densfunc.mass(rs, params)
