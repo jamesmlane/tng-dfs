@@ -18,8 +18,12 @@ os.makedirs(epsen_fig_dir,exist_ok=True)
 show_plots = False
 
 # Load tree data
-with open('../parse_sublink_trees/data/tree_primaries.pkl','rb') as handle:
+tree_primary_filename = os.path.join(mw_analog_dir,
+    'major_mergers/tree_primaries.pkl')
+with open(tree_primary_filename,'rb') as handle: 
     tree_primaries = pickle.load(handle)
-with open('../parse_sublink_trees/data/tree_major_mergers.pkl','rb') as handle:
+tree_major_mergers_filename = os.path.join(mw_analog_dir,
+    'major_mergers/tree_major_mergers.pkl')
+with open(tree_major_mergers_filename,'rb') as handle:
     tree_major_mergers = pickle.load(handle)
 n_mw = len(tree_primaries)
