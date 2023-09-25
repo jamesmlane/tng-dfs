@@ -1169,6 +1169,66 @@ class MiyamotoNagai(AxisymmetricDensityProfile):
                 return Rterm + zterm
         else:
             raise NotImplementedError("mass not implemented for non-integrated case")
+    
+    def densfunc_to_pot(self, params, map_method='mass_at_scale', densfunc=None, 
+        ro=_ro, vo=_vo, validate=True, pot_kwargs={}):
+        '''densfunc_to_pot:
+
+        Convert a pdens.MiyamotoNagaiDisk instance to a
+        potential.MiyamotoNagaiPotential based on supplied params.
+
+        Args:
+            params (list): List of parameters for the density profile, see
+                class docstring.
+            map_method (string): String representing the method used to 
+                convert to galpy potential, see above [default 'mass_at_scale']
+            densfunc (callable): pdens.DensityProfile instance to convert
+                [default pdens.TwoPowerSpherical()]
+            ro, vo (floats): galpy distance and velocity scales [default 
+                8.275, 220.]
+            validate (bool): Check that the galpy potential and pdens 
+                densfunc give the same enclosed mass, density, radial force.
+            pot_kwargs (dict): Dictionary of keyword arguments to pass to the 
+                galpy potential class [default {}]
+        
+        Returns:
+            pot (potential.MiyamotoNagaiPotential) - output galpy potential
+        '''
+        if densfunc is None:
+            densfunc = MiyamotoNagaiDisk()
+        a, b, amp = densfunc._parse_params(params)
+
+        if map_method == 'mass_at_scale':
+            _pot = potential.MiyamotoNagaiPotential(amp=1., 
+                a=a*apu.kpc, b=b*apu.kpc, ro=ro, vo=vo, **pot_kwargs)
+            _dmass = densfunc.mass(a*apu.kpc, params=params, zmax=b*apu.kpc)
+            _pmass = _pot.mass(a*apu.kpc, z=b*apu.kpc, 
+                use_physical=True).to(apu.Msun).value
+            _amp = _dmass/_pmass
+            pot = potential.MiyamotoNagaiPotential(amp=_amp, 
+                a=a*apu.kpc, b=b*apu.kpc, ro=ro, vo=vo, **pot_kwargs)
+        if map_method == 'total_mass':
+            _pot = potential.MiyamotoNagaiPotential(amp=amp*apu.Msun, 
+                a=a*apu.kpc, b=b*apu.kpc, ro=ro, vo=vo, **pot_kwargs)
+        
+        if validate:
+            tol = 1e-8
+            rs = np.logspace(-1, np.log10(5*a), num=30)*apu.kpc
+            # Mass
+            gmass = np.array([ pot.mass(r).to(apu.Msun).value for r in rs ])
+            dmass = densfunc.mass(rs, params)
+            assert np.all(np.abs((gmass-dmass)/dmass) < tol)
+            # Density
+            gdens = pot.dens(rs, b*apu.kpc).to(apu.Msun/apu.kpc**3).value
+            ddens = densfunc(rs, 0., b*apu.kpc, params)
+            assert np.all(np.abs((gdens-ddens)/ddens) < tol)
+            # Force
+            # gforce = pot.rforce(rs, 0.).to(apu.km/apu.s/apu.Myr).value
+            # dforce = densfunc.rforce(rs, params).value
+            # assert np.all(np.abs((gforce-dforce)/dforce) < tol)
+        
+        return pot
+
 
 # ----------------------------------------------------------------------------
 
