@@ -888,8 +888,8 @@ class TreeMajorMerger(TreeInfo):
                 the method used
             dm_mass_ratio_snapnum (int) - Snapshot number where the dark matter
                 mass ratio is calculated
-            merger_snapnum (int) - Snapshot number where the secondary is no
-                longer detected
+            merger_snapnum (int) - Snapshot number where the merger occurs,
+                typically defined as where the secondary is no longer detected.
             scheme (str) - String representing the method used to identify the
                 merger
             scheme_kwargs (dict) - Dictionary of keyword arguments used to
