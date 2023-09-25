@@ -241,6 +241,8 @@ class TwoPowerSpherical(SphericalDensityProfile):
             intfunc = lambda r: r**2*self(r, 0., 0., params=params)
             return 4*np.pi*scipy.integrate.quad(intfunc, 0, r)[0]
         else:
+            # Stabilize the hypergeometric function
+            if beta > 20 and r/a > 1000: r=a*1000
             return 4*np.pi*amp*(r**3)*(r/a)**(-alpha)*scipy.special.hyp2f1(
                 3-alpha, beta-alpha, 4-alpha, -r/a)/(3-alpha)
     
@@ -745,7 +747,8 @@ class SinglePowerCutoffSpherical(SphericalDensityProfile):
         else:
             if _use_hypergeometric:
                 out = np.ones_like(r, dtype=float)
-                mask = np.isinf(r)
+                # mask = np.isinf(r)
+                mask = r > 1000.0*rc
                 out[~mask] = (
                     2.0*np.pi*r[~mask]**(3.0-alpha)/(1.5-alpha/2.0)\
                     *scipy.special.hyp1f1(1.5-alpha/2.0, 2.5-alpha/2.0,
