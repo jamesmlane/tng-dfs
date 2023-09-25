@@ -246,9 +246,9 @@ def prepare_mwsubs(mw_analog_dir,h=_HUBBLE_PARAM,mw_mass_range=[5,7],
             print('Could not find file '+gid_filename)
             print('Skipping bulge and disk fraction cuts')
             bulge_disk_fraction_cuts = False
-        mask = np.in1d(ids,gids)
-        mwsubs = mwsubs[mask]
-        mwsubs_dict = [mwsubs_dict[i] for i in range(n_mw) if mask[i]]
+        bulge_disk_fraction_mask = np.in1d(ids,gids)
+        mwsubs = mwsubs[bulge_disk_fraction_mask]
+        mwsubs_dict = [mwsubs_dict[i] for i in range(n_mw) if bulge_disk_fraction_mask[i]]
         n_mw = len(mwsubs)
         print('Cut to ',n_mw,' subhalos')
 
@@ -259,8 +259,9 @@ def prepare_mwsubs(mw_analog_dir,h=_HUBBLE_PARAM,mw_mass_range=[5,7],
                 'snap0':snap0,'mw_mass_range':mw_mass_range,
                 'mw_mass_range_code':mw_mass_range_code,
                 'mw_search_query':mw_search_query,
-                'mw_search_results':mw_search_results,'n_mw':n_mw,
-                'mwsubs':mwsubs,'mwsubs_dict':mwsubs_dict}
+                'mw_search_results':mw_search_results,
+                'bulge_disk_fraction_mask':bulge_disk_fraction_mask,
+                'n_mw':n_mw,'mwsubs':mwsubs,'mwsubs_dict':mwsubs_dict}
         return mwsubs,vars
     else:
         return mwsubs
