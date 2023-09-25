@@ -1215,9 +1215,12 @@ class CompositeDensityProfile(DensityProfile):
         '''
         R, phi, z = self._parse_R_phi_z_input(R, phi, z)
         dens = np.zeros_like(R)
+        done_n_params = 0
         for i, densprofile in enumerate(self.densprofiles):
             n_params = densprofile.n_params
-            dens += densprofile(R, phi, z, params[i*n_params:(i+1)*n_params])
+            dens += densprofile(R, phi, z, 
+                params[done_n_params:(done_n_params+n_params)])
+            done_n_params += n_params
         return dens
     
     # def _parse_params(self, params):
@@ -1250,16 +1253,18 @@ class CompositeDensityProfile(DensityProfile):
                 then integrate from -inf to inf. [default: None] 
         '''
         mass = 0.
+        done_n_params = 0
         for i, densprofile in enumerate(self.densprofiles):
             n_params = densprofile.n_params
             if isinstance(densprofile, SphericalDensityProfile):
                 mass += densprofile.mass(r=r, 
-                    params=params[i*n_params:(i+1)*n_params], 
+                    params=params[done_n_params:(done_n_params+n_params)], 
                     integrate=integrate)
             if isinstance(densprofile, AxisymmetricDensityProfile):
                 mass += densprofile.mass(R=r, 
-                    params=params[i*n_params:(i+1)*n_params], 
+                    params=params[done_n_params:(done_n_params+n_params)], 
                     zmax=zmax, integrate=integrate)
+            done_n_params += n_params
         return mass
     
     def effective_volume(self, params, rmin=0., rmax=np.inf, zmax=np.inf, 
@@ -1279,18 +1284,23 @@ class CompositeDensityProfile(DensityProfile):
             effvol (float): Effective volume of the density profile
         '''
         vol = 0.
+        vols = []
+        done_n_params = 0
         for i, densprofile in enumerate(self.densprofiles):
             n_params = densprofile.n_params
             if isinstance(densprofile, SphericalDensityProfile):
                 _vol = densprofile.effective_volume(
-                    params=params[i*n_params:(i+1)*n_params], 
+                    params=params[done_n_params:(done_n_params+n_params)], 
                     rmin=rmin, rmax=rmax, integrate=integrate)
                 vol += _vol
+                vols.append(_vol)
             if isinstance(densprofile, AxisymmetricDensityProfile):
                 _vol = densprofile.effective_volume(
-                    params=params[i*n_params:(i+1)*n_params], 
+                    params=params[done_n_params:(done_n_params+n_params)], 
                     rmin=rmin, rmax=rmax, zmax=zmax, integrate=integrate)
                 vol += _vol
+                vols.append(_vol)
+            done_n_params += n_params
         return vol
 
 
