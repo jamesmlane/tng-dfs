@@ -940,7 +940,7 @@ class DoubleExponentialDisk(AxisymmetricDensityProfile):
             return 4*np.pi*amp*hr*hz*rterm*zterm
 
     def densfunc_to_pot(self, params, map_method='mass_at_scale', densfunc=None,
-        ro=_ro, vo=_vo, validate=True):
+        ro=_ro, vo=_vo, validate=True, pot_kwargs={}):
         '''densfunc_to_pot:
 
         Convert a pdens.DoubleExponentialDisk instance to a 
@@ -971,17 +971,17 @@ class DoubleExponentialDisk(AxisymmetricDensityProfile):
 
         if map_method == 'mass_at_scale':
             _pot = potential.DoubleExponentialDiskPotential(amp=1., 
-                hr=hr*apu.kpc, hz=hz*apu.kpc, ro=ro, vo=vo)
+                hr=hr*apu.kpc, hz=hz*apu.kpc, ro=ro, vo=vo, **pot_kwargs)
             _dmass = densfunc.mass(hr*apu.kpc, params=params, zmax=hz*apu.kpc)
             _pmass = _pot.mass(hr*apu.kpc, z=hz*apu.kpc, 
                 use_physical=True).to(apu.Msun).value
             _amp = _dmass/_pmass
             pot = potential.DoubleExponentialDiskPotential(amp=_amp, 
-                hr=hr*apu.kpc, hz=hz*apu.kpc, ro=ro, vo=vo)
+                hr=hr*apu.kpc, hz=hz*apu.kpc, ro=ro, vo=vo, **pot_kwargs)
         
         if validate:
             tol = 1e-8
-            rs = np.logspace(-1, 2, num=30)*apu.kpc
+            rs = np.logspace(-1, np.log10(5*hr), num=30)*apu.kpc
             # Mass
             gmass = np.array([ pot.mass(r).to(apu.Msun).value for r in rs ])
             dmass = densfunc.mass(rs, params)
