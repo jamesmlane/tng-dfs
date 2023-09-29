@@ -25,6 +25,7 @@ try:
 except ImportError:
     _ASTROPY = False
 from . import util
+from . import kinematics as kin
 
 import pdb
 
@@ -402,15 +403,9 @@ class TNGCutout():
         masses = self.get_masses(ptype,internal=True)
         coords = self.get_coordinates(ptype,internal=True)
         rs = np.sqrt(np.sum(np.square(coords),axis=1))
-        
-        # Get the half-mass radius
-        rs_sorted = np.sort(rs)
-        masses_sorted = masses[np.argsort(rs)]
-        masses_cumsum = np.cumsum(masses_sorted)
-        hm = masses_cumsum[-1]/2
-        hm_indx = np.argmin(np.abs(masses_cumsum-hm))
-        hmr = rs_sorted[hm_indx]
 
+        # Get the half-mass radius and return
+        hmr = kin.half_mass_radius(rs,masses)
         if physical:
             hmr = util.distance_code_to_physical(hmr,z=self.z)
         if _ASTROPY and physical and not internal:

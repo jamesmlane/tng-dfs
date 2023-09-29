@@ -578,3 +578,28 @@ def _E_Enorm_Jz_Jcirc_bounds():
     Jz_Jcirc_disk_bound = 0.8
     Enorm_bulge_bound = -0.75
     return Jz_Jcirc_halo_bound,Jz_Jcirc_disk_bound,Enorm_bulge_bound
+
+def half_mass_radius(rs,masses):
+    '''half_mass_radius:
+
+    Compute the half-mass radius from supplied radii and masses
+
+    Args:
+        rs (np.array) - Radii
+        masses (np.array) - Masses
+    
+    Returns:
+        hm (float) - Half-mass radius
+    '''
+    if isinstance(rs,apu.quantity.Quantity):
+        rs = rs.to(apu.kpc).value
+    if isinstance(masses,apu.quantity.Quantity):
+        masses = masses.to(apu.Msun).value
+    # Get the half-mass radius
+    rs_sorted = np.sort(rs)
+    masses_sorted = masses[np.argsort(rs)]
+    masses_cumsum = np.cumsum(masses_sorted)
+    hm = masses_cumsum[-1]/2
+    hm_indx = np.argmin(np.abs(masses_cumsum-hm))
+    return rs_sorted[hm_indx]
+
