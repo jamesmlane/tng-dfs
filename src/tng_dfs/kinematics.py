@@ -543,12 +543,109 @@ def calculate_Krot(orbs,masses,return_kappa=False):
     else:
         return Krot
 
-def beta_any_alpha_cuddeford91(r,ra=1.,alpha=0.,beta=None):
-    '''beta_any_alpha:
+### Anisotropy computation & profiles ###
 
-    Calculate beta as a function of radius for any central alpha (2*beta).
+def compute_betas_bootstrap(orbs, bin_edges, n_bootstrap=10, 
+    compute_betas_kwargs={}):
+    '''compute_betas_bootstrap:
 
-    Equation 38 from Cuddeford (1991)
+    Take a set of orbits and use bootstrapping to compute a distribution of 
+    betas.
+
+    Args:
+        orbs (galpy.orbit.Orbit) - Orbits object 
+        bin_edges (np.ndarray) - Radius bin edges used to bin data to compute 
+            dispersions/mean-squares.
+        n_bootstrap (int) - Number of bootstrap samples to take [default: 10]
+        compute_betas_kwargs (dict) - Keyword arguments to pass to 
+            compute_betas [default: {}]
+    
+    Returns:
+        betas (np.ndarray) - Array of betas of shape (n_bootstrap,n_bin)
+        if return_kinematics=True in compute_betas_kwargs: 
+            [each array has shape (n_bootstrap,n_bin)]
+            svr2/mvr2 (np.ndarray) - Radial velocity dispersion squared / 
+                mean-square velocity
+            svp2/mvp2 (np.ndarray) - Azimuthal velocity dispersion squared / 
+                mean-square velocity
+            svt2/mvt2 (np.ndarray) - Polar velocity dispersion squared / 
+                mean-square velocity
+    '''
+    betas = np.zeros((n_bootstrap,len(bin_edges)-1))
+    _return_kinematics = compute_betas_kwargs.get('return_kinematics',False)
+    if _return_kinematics:
+        bvr = np.zeros((n_bootstrap,len(bin_edges)-1))
+        bvp = np.zeros((n_bootstrap,len(bin_edges)-1))
+        bvt = np.zeros((n_bootstrap,len(bin_edges)-1))
+    
+    for i in range(n_bootstrap):
+        indx = np.random.choice(np.arange(len(orbs),dtype=int), 
+            size=len(orbs), replace=True)
+        _orbs = orbs[indx]
+        res = compute_betas(_orbs, bin_edges, **compute_betas_kwargs)
+        if _return_kinematics:
+            betas[i],bvr[i],bvp[i],bvt[i] = res
+        else:
+            betas[i] = res
+    
+    if _return_kinematics:
+        return betas,bvr,bvp,bvt
+    else:
+        return betas
+
+def compute_betas(orbs, bin_edges, use_dispersions=True, return_kinematics=False):
+    '''compute_betas:
+
+    General function to compute beta either from velocity dispersions or 
+    from the mean-square velocities. Velocities are sourced from an orbit 
+    object.
+
+    Args:
+        orbs (galpy.orbit.Orbit) - Orbits object 
+        bin_edges (np.ndarray) - Radius bin edges used to bin data to compute 
+            dispersions/mean-squares.
+        use_dispersions (bool) - If True, use dispersions to compute beta,
+            otherwise use mean-square velocities [default True]
+        return_kinematics (bool) - If True, return the quantities used to 
+            construct beta. If False, just return beta [default False]
+        
+    Returns:
+        beta (np.ndarray) - Anisotropy parameter
+        if return_kinematics:
+            svr2/mvr2 (np.ndarray) - Radial velocity dispersion squared / 
+                mean-square velocity
+            svp2/mvp2 (np.ndarray) - Azimuthal velocity dispersion squared / 
+                mean-square velocity
+            svt2/mvt2 (np.ndarray) - Polar velocity dispersion squared / 
+                mean-square velocity
+    '''
+    # Get the radii & velocities
+    rs = orbs.r(use_physical=True).to(apu.kpc).value
+    vr = orbs.vr(use_physical=True).to(apu.km/apu.s).value
+    vp = orbs.vT(use_physical=True).to(apu.km/apu.s).value
+    vt = orbs.vtheta(use_physical=True).to(apu.km/apu.s).value
+
+    bvr = np.zeros(len(bin_edges)-1)
+    bvp = np.zeros(len(bin_edges)-1)
+    bvt = np.zeros(len(bin_edges)-1)
+
+    for i in range(len(bin_edges)-1):
+        bin_mask = (rs>=bin_edges[i]) & (rs<bin_edges[i+1])
+        if use_dispersions:
+            bvr[i] = np.std(vr[bin_mask])**2
+            bvp[i] = np.std(vp[bin_mask])**2
+            bvt[i] = np.std(vt[bin_mask])**2
+        else:
+            bvr[i] = np.mean(np.square(vr[bin_mask]))
+            bvp[i] = np.mean(np.square(vp[bin_mask]))
+            bvt[i] = np.mean(np.square(vt[bin_mask]))
+    
+    beta = 1 - (bvp + bvt)/(2*bvr)
+
+    if return_kinematics:
+        return beta,bvr,bvp,bvt
+    else:
+        return beta
 
     Args:
         r (float or array): Radius
