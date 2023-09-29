@@ -1228,7 +1228,7 @@ class MiyamotoNagaiDisk(AxisymmetricDensityProfile):
             pot = potential.MiyamotoNagaiPotential(amp=_amp, 
                 a=a*apu.kpc, b=b*apu.kpc, ro=ro, vo=vo, **pot_kwargs)
         if map_method == 'total_mass':
-            _pot = potential.MiyamotoNagaiPotential(amp=amp*apu.Msun, 
+            pot = potential.MiyamotoNagaiPotential(amp=amp*apu.Msun, 
                 a=a*apu.kpc, b=b*apu.kpc, ro=ro, vo=vo, **pot_kwargs)
         
         if validate:
