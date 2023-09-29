@@ -96,7 +96,7 @@ def calculate_spherical_jeans_quantities(orbs,pot=None,pe=None,r_range=[0,100],
         else:
             kwargs = {}
         # Get the bins for derivatives
-        dr_bin_edge,_ = get_radius_binning(orbs,**kwargs)
+        dr_bin_edge,_,_ = get_radius_binning(orbs,**kwargs)
         n_dr_bin = len(dr_bin_edge)-1
         n_bin = n_dr_bin-1
     elif bin_edge is not None:
@@ -341,7 +341,7 @@ def calculate_weighted_average_J(J,rs,dens=None,qs=None,weights=None,
 
 def get_radius_binning(orbs, n=1000, rmin=0., rmax=np.inf,
     bin_mode='restrict number', max_bin_size=None, bin_equal_n=True, 
-    end_mode='bin', delta_n=10, delta_r=1e-8):
+    end_mode='bin', bin_cents_mode='delta', delta_n=10, delta_r=1e-8):
     '''get_radius_binning:
 
     Bin up the samples according to radius so that there's a minimum number 
@@ -369,7 +369,6 @@ def get_radius_binning(orbs, n=1000, rmin=0., rmax=np.inf,
             np.inf, then just use the maximum radius in the sample.
         bin_mode (str) One of 'enforce size', 'enforce numbers', 
             'exact numbers'. See above for details.
-
         max_bin_size (float): Maximum size of a bin in kpc, can be Quantity
         bin_equal_n (bool): If True, then each bin will have ~ the same number
             of samples. If False, then the number of samples in each bin will
@@ -381,7 +380,11 @@ def get_radius_binning(orbs, n=1000, rmin=0., rmax=np.inf,
             fraction of samples in the last bin compared w/ the previous bin is
             less than the float, otherwise will use 'bin'. If 'ignore', then
             the last samples will be ignored.
-    
+        bin_cents_mode (str): If 'mean' then compute the bin centers as the 
+            mean of the samples in the bin. If 'median' then compute the bin
+            centers as the median of the samples in the bin. If 'delta' then
+            compute the bin centers as the delta between the bin edges. 
+            [default 'delta']
         delta_n (int): Small number to decrease n by if the bin size is too
             large.
         delta_r (float): Small number to add to the bin edges to make sure that
@@ -493,7 +496,21 @@ def get_radius_binning(orbs, n=1000, rmin=0., rmax=np.inf,
     
     bin_edges = np.asarray(bin_edges)
 
-    return bin_edges, n_samples
+    # Compute the bin centers
+    assert bin_cents_mode in ['mean','median','delta'], \
+        'bin_cents_mode must be one of "mean", "median", "delta"'
+    if bin_cents_mode == 'delta':
+        bin_cents = (bin_edges[1:]+bin_edges[:-1])/2
+    elif bin_cents_mode in ['mean','median']:
+        bin_cents = np.empty(len(bin_edges)-1)
+        for i in range(len(bin_edges)-1):
+            mask = (rs > bin_edges[i]) & (rs <= bin_edges[i+1])
+            if bin_cents_mode == 'mean':
+                bin_cents[i] = np.mean(rs[mask])
+            elif bin_cents_mode == 'median':
+                bin_cents[i] = np.median(rs[mask])
+
+    return bin_edges, bin_cents, n_samples
 
 
 def calculate_Krot(orbs,masses,return_kappa=False):
