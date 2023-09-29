@@ -647,21 +647,26 @@ def compute_betas(orbs, bin_edges, use_dispersions=True, return_kinematics=False
     else:
         return beta
 
+def beta_constant(r, beta=0.):
+    '''beta_constant: 
+    
+    Constant beta profile, included for completeness.
+    
     Args:
         r (float or array): Radius
-        ra (float): Scale radius
-        alpha (float): Twice the central anisotropy parameter, default 0
-        beta (optional, float): The anisotropy parameter at 
-
+        beta (float): Anisotropy parameter
+    
     Returns:
-        beta (float or array): Anisotropy
+        beta (float or array): Anisotropy parameter
     '''
-    if beta is not None:
-        alpha = 2*beta
-    return (r**2-alpha*ra**2)/(r**2+ra**2)
+    if isinstance(r,(float,int)):
+        return beta
+    if isinstance(r,np.ndarray):
+        return np.ones(len(r))*beta
+    raise Exception('r must be float, int, or np.ndarray')
 
-def beta_ossipkov_merrit(r,ra=1.):
-    '''beta_ossipkov_merrit:
+def beta_osipkov_merritt(r,ra=1.):
+    '''beta_osipkov_merritt:
 
     Calculate beta as a function of radius for the Ossipkov-Merrit DF
 
@@ -673,6 +678,24 @@ def beta_ossipkov_merrit(r,ra=1.):
         beta (float or array): Anisotropy parameter
     '''
     return (r**2)/(r**2+ra**2)
+
+def beta_cuddeford91(r,ra=1.,alpha=0.):
+    '''beta_cuddeford91:
+
+    Calculate beta as a function of radius for the generalized anisotropic model 
+    presented by Cuddeford (1991), specifically equation 38. 
+
+    Args:
+        r (float or array): Radius
+        ra (float): Scale radius
+        alpha (float): The negative of the central anisotropy.
+
+    Returns:
+        beta (float or array): Anisotropy
+    '''
+    return (r**2-alpha*ra**2)/(r**2+ra**2)
+
+### Convenience functions ###
 
 def _E_Enorm_Jz_Jcirc_bounds():
     '''_E_Enorm_Jz_Jcirc_bounds:
