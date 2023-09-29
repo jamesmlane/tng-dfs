@@ -242,7 +242,11 @@ class TwoPowerSpherical(SphericalDensityProfile):
             return 4*np.pi*scipy.integrate.quad(intfunc, 0, r)[0]
         else:
             # Stabilize the hypergeometric function
-            if beta > 20 and r/a > 1000: r=a*1000
+            if beta > 20:
+                if isinstance(r, np.ndarray):
+                    r[r/a > 1000] = a*1000
+                elif isinstance(r, (float, int)) and r/a > 1000:
+                    r = a*1000
             return 4*np.pi*amp*(r**3)*(r/a)**(-alpha)*scipy.special.hyp2f1(
                 3-alpha, beta-alpha, 4-alpha, -r/a)/(3-alpha)
     
