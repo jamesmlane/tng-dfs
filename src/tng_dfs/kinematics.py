@@ -740,3 +740,54 @@ def half_mass_radius(rs,masses):
     hm_indx = np.argmin(np.abs(masses_cumsum-hm))
     return rs_sorted[hm_indx]
 
+### Sampling from rotating DFs ###
+
+def rotate_df_samples(orbs, frot=0., chi=None, rotation_sign=1.):
+    '''rotate_df_samples:
+    
+    Take a set of sampled orbits and flip Lz for some of them such the rotating 
+    tanh kernel DF is satisfied.
+
+    Args:
+
+    '''
+    vxvv_rot = copy.deepcopy(orbs.vxvv)
+    Lz = orbs.Lz(use_physical=True)
+    if isinstance(Lz,apu.Quantity):
+        Lz = Lz.to(apu.kpc*apu.km/apu.s).value
+
+    # Probability of flipping the tangential velocity
+    pflip = 1-df_rotation_function(rotation_sign*Lz, frot=frot, chi=chi)
+    _p = np.random.uniform(size=len(orbs))
+    flip_mask = _p < pflip
+    # Lz_to_be_flipped = rotation_sign*Lz < 0.
+    # flip_mask = flip_probable # & Lz_to_be_flipped
+    vxvv_rot[:,2][flip_mask] = -vxvv_rot[:,2][flip_mask]
+
+    if orbs._roSet and orbs._voSet:
+        return orbit.Orbit(vxvv=vxvv_rot, ro=orbs._ro, vo=orbs._vo)
+    else:
+        return orbit.Orbit(vxvv=vxvv_rot)
+
+def df_rotation_function(Lz, frot=0., chi=1.):
+    '''df_rotation_function:
+
+    Function that expresses the rotating DF as a function of Lz.
+
+
+    '''
+    assert frot>=0. and frot<=1., "frot must be between 0 and 1"
+    if isinstance(Lz,apu.Quantity):
+        Lz = Lz.to(apu.kpc*apu.km/apu.s).value
+    if isinstance(chi,apu.Quantity):
+        chi = chi.to(apu.kpc*apu.km/apu.s).value
+    gLz = tanh_rotation_kernel(Lz, chi=chi)
+    k = frot/2.
+    return 1-k+k*gLz
+
+def tanh_rotation_kernel(Lz, chi=1.):
+    if isinstance(Lz,apu.Quantity):
+        Lz = Lz.to(apu.kpc*apu.km/apu.s).value
+    if isinstance(chi,apu.Quantity):
+        chi = chi.to(apu.kpc*apu.km/apu.s).value
+    return np.tanh(Lz/chi)
