@@ -456,11 +456,11 @@ def get_radius_binning(orbs, n=1000, rmin=0., rmax=np.inf,
             _n = n
             while len(rs)/_n > n_bins:
                 _n += 1
-            else: # Don't care, just use n
-                _n = n
-            for i in range(n_bins):
-                new_bin_edge = rs_sorted[(i+1)*_n-1]+delta_r
-                bin_edges.append(new_bin_edge)
+        else: # Don't care, just use n
+            _n = n
+        for i in range(n_bins):
+            new_bin_edge = rs_sorted[(i+1)*_n-1]+delta_r
+            bin_edges.append(new_bin_edge)
 
     # Now do the 'exact numbers' algorithm
     if bin_mode == 'exact numbers':
