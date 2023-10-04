@@ -15,8 +15,9 @@ __author__ = "James Lane"
 ### Imports
 import numpy as np
 import copy
-from galpy import potential,orbit
+from galpy import potential,orbit,df
 import astropy.units as apu
+import dill as pickle
 
 from . import util as putil
 
@@ -791,3 +792,68 @@ def tanh_rotation_kernel(Lz, chi=1.):
     if isinstance(chi,apu.Quantity):
         chi = chi.to(apu.kpc*apu.km/apu.s).value
     return np.tanh(Lz/chi)
+
+### Reconstructing DFs ###
+
+def reconstruct_anisotropic_df(dfa, pot, denspot, dfa_kwargs={}, validate=False):
+    '''reconstruct_anisotropic_df:
+
+    Re-build an anisotropic DF after loading it in. This navigates weird 
+    issues with isinstance() failures after pickling/unpickling.
+
+    Will only currently work with these DFs:
+        - df.constantbetadf
+        - df.osipkovmerrittdf
+
+    Args:
+        dfa (galpy.df object or str) - Anisotropic DF that needs to be 
+            reconstructed, if string then load it as a filename.
+        pot (galpy.potential object) - Potential to use in the DF
+        denspot (galpy.potential object) - Potential to use in the DF for the 
+            density
+        dfa_kwargs (dict) - Dictionary of attributes for the new DF
+        validate (bool) - If True, validate the reconstructed DF by comparing
+            the density profile to the input density profile [default: False]
+        
+    Returns:
+        dfac (galpy.df object) - Reconstructed DF
+    '''
+    if isinstance(dfa,str):
+        with open(dfa,'rb') as f:
+            dfa = pickle.load(f)
+    
+    # Ensure some universal kwargs are set in dfa_kwargs
+    if 'ro' not in dfa_kwargs:
+        dfa_kwargs['ro'] = dfa._ro
+    if 'vo' not in dfa_kwargs:
+        dfa_kwargs['vo'] = dfa._vo
+    if 'rmax' not in dfa_kwargs:
+        dfa_kwargs['rmax'] = dfa._rmax
+
+    # Reconstruct based on DF type
+    if dfa.__class__.__name__ == 'constantbetadf':
+        if 'beta' not in dfa_kwargs:
+            dfa_kwargs['beta'] = dfa._beta
+        dfac = df.constantbetadf(pot=pot, denspot=denspot, **dfa_kwargs)
+        dfac._fE_interp = dfa._fE_interp
+    elif dfa.__class__.__name__ == 'osipkovmerrittdf':
+        if 'ra' not in dfa_kwargs:
+            dfa_kwargs['ra'] = dfa._ra
+        dfac = df.osipkovmerrittdf(pot=pot, denspot=denspot, **dfa_kwargs)
+        dfac._logQ_interp = dfa._logfQ_interp
+        if validate:
+            Es = np.linspace(0.1, 1., 10)
+            assert np.allclose(dfac._logfQ_interp(Es), dfa._logfQ_interp(Es)), \
+                'logfQ not the same'
+    else:
+        raise Exception('DF type not recognized')
+
+    if validate:
+        rs = np.linspace(0.1,10.,10)
+        assert np.allclose(dfac._pot(rs,0.), dfa._pot(rs,0.)), \
+            'Potential not the same'
+        assert np.allclose(dfac._denspot(rs,0.), dfa._denspot(rs,0.)), \
+            'Density potential not the same'
+
+    return dfac
+    
