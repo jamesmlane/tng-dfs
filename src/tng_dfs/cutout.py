@@ -14,6 +14,7 @@ __author__ = "James Lane"
 
 ### Imports
 import numpy as np
+import os
 import warnings
 import h5py
 import scipy.interpolate
@@ -417,7 +418,8 @@ class TNGCutout():
 
     def center_and_rectify(self,cen_ptype='PartType4', vcen_ptype='PartType4', 
         rot_ptype='PartType4', cen_scheme='ssc', vcen_scheme='bounded_vcom',
-        rot_scheme='bounded_L', cen_kwargs={}, vcen_kwargs={}, rot_kwargs={}):
+        rot_scheme='bounded_L', cen_kwargs={}, vcen_kwargs={}, rot_kwargs={},
+        _use_saved_cen=True):
         '''center_and_rectify:
         
         Center the simulation on the primary subhalo and rectify the coordinates 
@@ -445,6 +447,8 @@ class TNGCutout():
                 [default 'bounded_vcom']
             rot_scheme (str) - Scheme to calculate rotation matrix of the primary
                 [default 'bounded_L']
+            _use_saved_cen (bool) - Use the saved centering information if
+                available [default True]
         
         Returns:
             None, but sets self._cen, self._vcen, and self._rot
@@ -460,7 +464,8 @@ class TNGCutout():
                                         internal=True)
             self._cen_ptype = cen_ptype
             self._cen = self.find_position_center(cen_coords, cen_masses, 
-                scheme=cen_scheme, cen_kwargs=cen_kwargs)
+                scheme=cen_scheme, cen_kwargs=cen_kwargs, 
+                _use_saved_cen=_use_saved_cen)
             self._cen_is_set = True
                                           
         # Determine primary subhalo velocity offset
@@ -496,7 +501,8 @@ class TNGCutout():
             self._rot_is_set = True
         return None 
     
-    def find_position_center(self,coords,masses,scheme='ssc',cen_kwargs={}):
+    def find_position_center(self,coords,masses,scheme='ssc',cen_kwargs={},
+        _use_saved_cen=True):
         '''find_position_center:
         
         Wrapper for determining the positional center of the subhalo based on a 
@@ -513,11 +519,13 @@ class TNGCutout():
                 subhalo in code units.
         '''
         if scheme == 'ssc':
-            cen = self._find_position_center_ssc(coords,masses,**cen_kwargs)
+            cen = self._find_position_center_ssc(coords,masses,**cen_kwargs,
+                _use_saved_cen=_use_saved_cen)
         return cen
     
     def _find_position_center_ssc(self,coords,masses,shrink_factor=0.9,
-                                  min_particles=100,max_niter=10000):
+                                  min_particles=100,max_niter=10000,
+                                  _use_saved_cen=True):
         '''_find_position_center_ssc:
         
         Use the shrinking-sphere center algorithm of Power+ (2003) to 
@@ -536,7 +544,24 @@ class TNGCutout():
                 within the shrinking sphere then terminate the algorithm 
                 [default 100]
             max_niter (int) - Maximum number of iterations [default 1000]
-        '''        
+        '''
+        # Load file information
+        cdict = util.load_config_to_dict()
+        mw_analog_dir, = util.parse_config_dict(cdict,['MW_ANALOG_DIR'])
+        _file_basename = os.path.basename(self.filename).split('.')[0]
+        cen_filename = 'cen_ssc_'+_file_basename+\
+            '_shrink_factor_'+str(shrink_factor)+\
+            '_min_particles_'+str(min_particles)+\
+            '_max_niter_'+str(max_niter)+'.npy'
+        cen_dirname = os.path.join(mw_analog_dir,'stash','cen',
+            'snap_'+str(self.snapnum))
+
+        # Check if saved centering information is available
+        if _use_saved_cen:
+            if os.path.exists(os.path.join(cen_dirname,cen_filename)):
+                cen = np.load(os.path.join(cen_dirname,cen_filename))
+                return cen
+
         # Initialize variables
         cen = np.average(coords,axis=0,weights=masses)
         cen_arr = [cen,]
@@ -561,6 +586,11 @@ class TNGCutout():
                 cen_arr.append(cen)
                 niter += 1
         
+        # Save the centering information
+        if not os.path.exists(cen_dirname):
+            os.makedirs(cen_dirname)
+        np.save(os.path.join(cen_dirname,cen_filename),cen)
+
         return cen
     
     def find_velocity_center(self,coords,vels,masses,scheme='bounded_vcom',
