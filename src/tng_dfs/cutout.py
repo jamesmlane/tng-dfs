@@ -447,6 +447,12 @@ class TNGCutout():
                 [default 'bounded_vcom']
             rot_scheme (str) - Scheme to calculate rotation matrix of the primary
                 [default 'bounded_L']
+            cen_kwargs (dict) - Keyword arguments to pass to the scheme for
+                determining the position offset of the primary
+            vcen_kwargs (dict) - Keyword arguments to pass to the scheme for
+                determining the velocity offset of the primary
+            rot_kwargs (dict) - Keyword arguments to pass to the scheme for
+                determining the rotation matrix of the primary
             _use_saved_cen (bool) - Use the saved centering information if
                 available [default True]
         
