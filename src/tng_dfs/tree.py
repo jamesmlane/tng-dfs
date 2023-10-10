@@ -777,7 +777,7 @@ class TreeInfo(object):
         return fname
     
     def get_unique_particle_ids(self,ptype,mw_analog_dir=None,data_dir=None,
-        snapnum=None):
+        snapnum=None, use_saved_ids=True):
         '''get_unique_particle_ids:
 
         Get all the unique particle IDs for this subhalo across all snapshots.
@@ -787,22 +787,49 @@ class TreeInfo(object):
             data_dir (str) - Data directory path as per the config file
             snapnum (int or np.array) - Specify the snapshot numbers to get 
                 unique particle IDs for. If None, get all snapshots.
+            use_saved_ids (bool) - If True, then use the saved unique particle
+                IDs which are found in the stash directory.
         
         Returns:
             unique_particle_ids (np.array) - Array of unique particle IDs
         '''
+        # Directory pathing
         if mw_analog_dir is None:
             if data_dir is None:
                 raise ValueError('Must currently provide mw_analog_dir or'
                                  ' data_dir')
             else:
                 mw_analog_dir = data_dir+'mw_analogs/'
+        
+        # Handle the requested snapshot numbers
         if snapnum is None:
             snapnum = self.snapnum
         else:
             snapnum = np.atleast_1d(snapnum)
             assert np.all(np.in1d(snapnum,self.snapnum)), \
                 'snapnum must be in self.snapnum'
+        _all_snapnum = np.all(np.in1d(self.snapnum,snapnum))
+
+        # Get the filename for the stashed IDs
+        _file_basename = os.path.basename(self.tree_filename).split('.')[0]
+        try:
+            _mlpid = self.mlpid
+        except AttributeError:
+            _mlpid = self.secondary_mlpid
+        pid_filename = 'pid_tree_'+_file_basename+\
+            '_ptype_indx_'+str(putil.ptype_to_indx(ptype))+\
+            '_mlpid_'+str(_mlpid)+\
+            '_all_snaps.npy'
+        pid_dirname = os.path.join(mw_analog_dir,'stash','pid')
+
+        # Load the saved IDs if they exist
+        if use_saved_ids:
+            if _all_snapnum:
+                if os.path.exists(os.path.join(pid_dirname,pid_filename)):
+                    return np.load(os.path.join(pid_dirname,pid_filename))
+            else:
+                warnings.warn('Not all snapshots were requested for unique particle IDs. Stashed IDs will not be used.')
+
         particle_ids = np.array([],dtype=int)
         for snap in snapnum:
             # print(snap)
@@ -817,7 +844,16 @@ class TreeInfo(object):
                 warnings.warn('No particle IDs found for snapshot '+str(snap))
                 pass
             del co
-        return np.unique(particle_ids).astype(int)
+        
+        pid = np.unique(particle_ids).astype(int)
+
+        # Save the unique particle IDs.
+        if _all_snapnum:
+            if not os.path.exists(pid_dirname):
+                os.makedirs(pid_dirname)
+            np.save(os.path.join(pid_dirname,pid_filename),pid)
+
+        return pid
 
 
 class TreePrimary(TreeInfo):
