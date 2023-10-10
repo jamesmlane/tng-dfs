@@ -803,7 +803,7 @@ class TreeInfo(object):
             snapnum = np.atleast_1d(snapnum)
             assert np.all(np.in1d(snapnum,self.snapnum)), \
                 'snapnum must be in self.snapnum'
-        unique_particle_ids = np.array([],dtype=int)
+        particle_ids = np.array([],dtype=int)
         for snap in snapnum:
             # print(snap)
             # Get the cutout file for this snapshot
@@ -812,14 +812,12 @@ class TreeInfo(object):
             # Get the unique particle IDs for this snapshot
             try:
                 pid = co.get_property(ptype,'ParticleIDs').astype(int)
-                unique_particle_ids = np.unique(
-                    np.concatenate((unique_particle_ids,pid))
-                    )
+                particle_ids = np.concatenate((particle_ids,pid))    
             except KeyError:
                 warnings.warn('No particle IDs found for snapshot '+str(snap))
                 pass
             del co
-        return unique_particle_ids.astype(int)
+        return np.unique(particle_ids).astype(int)
 
 
 class TreePrimary(TreeInfo):
