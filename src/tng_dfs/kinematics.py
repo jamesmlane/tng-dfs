@@ -795,7 +795,8 @@ def tanh_rotation_kernel(Lz, chi=1.):
 
 ### Reconstructing DFs ###
 
-def reconstruct_anisotropic_df(dfa, pot, denspot, dfa_kwargs={}, validate=False):
+def reconstruct_anisotropic_df(dfa, pot, denspot, dfa_kwargs=None, 
+    validate=False):
     '''reconstruct_anisotropic_df:
 
     Re-build an anisotropic DF after loading it in. This navigates weird 
@@ -821,6 +822,10 @@ def reconstruct_anisotropic_df(dfa, pot, denspot, dfa_kwargs={}, validate=False)
     if isinstance(dfa,str):
         with open(dfa,'rb') as f:
             dfa = pickle.load(f)
+    if dfa_kwargs is None:
+        dfa_kwargs = {}
+    else:
+        assert isinstance(dfa_kwargs,dict), 'dfa_kwargs must be a dictionary'
     
     # Ensure some universal kwargs are set in dfa_kwargs
     if 'ro' not in dfa_kwargs:
@@ -840,7 +845,7 @@ def reconstruct_anisotropic_df(dfa, pot, denspot, dfa_kwargs={}, validate=False)
         if 'ra' not in dfa_kwargs:
             dfa_kwargs['ra'] = dfa._ra
         dfac = df.osipkovmerrittdf(pot=pot, denspot=denspot, **dfa_kwargs)
-        dfac._logQ_interp = dfa._logfQ_interp
+        dfac._logfQ_interp = dfa._logfQ_interp
         if validate:
             Es = np.linspace(0.1, 1., 10)
             assert np.allclose(dfac._logfQ_interp(Es), dfa._logfQ_interp(Es)), \
