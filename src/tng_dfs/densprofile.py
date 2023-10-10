@@ -1398,6 +1398,50 @@ class CompositeDensityProfile(DensityProfile):
             done_n_params += n_params
         return vol
 
+    def densfunc_to_pot(self, params, map_method=None, densfunc=None, 
+        ro=_ro, vo=_vo, validate=True, pot_kwargs={}):
+        '''densfunc_to_pot:
+
+        '''
+        # Do some wrangling of inputs
+        if map_method is None:
+            map_method = [map_method,]*self.n_densprofiles
+        elif isinstance(map_method, (list,tuple,np.ndarray)) and \
+            len(map_method) == self.n_densprofiles: pass
+        else: raise ValueError('map_method must have length n_densprofiles')
+
+        if densfunc is None:
+            densfunc = [densfunc,]*self.n_densprofiles
+        elif isinstance(densfunc, (list,tuple,np.ndarray)) and \
+            len(densfunc) == self.n_densprofiles: pass
+        else: raise ValueError('densfunc must have length n_densprofiles')
+
+        if isinstance(validate,bool):
+            validate = [validate,]*self.n_densprofiles
+        elif isinstance(validate, (list,tuple,np.ndarray)) and \
+            len(validate) == self.n_densprofiles: pass
+        else: raise ValueError('validate must have length n_densprofiles')
+        
+        if isinstance(pot_kwargs, dict):
+            pot_kwargs = [pot_kwargs,]*self.n_densprofiles
+        elif isinstance(pot_kwargs, (list,tuple,np.ndarray)) and \
+            len(pot_kwargs) == self.n_densprofiles: pass
+        else: raise ValueError('pot_kwargs must have length n_densprofiles')
+
+        pots = []
+        done_n_params = 0
+        for i in range(self.n_densprofiles):
+            n_params = self.densprofiles[i].n_params
+            _params = params[done_n_params:(done_n_params+n_params)]
+            done_n_params += n_params
+            pots.append(
+                self.densprofiles[i].densfunc_to_pot(
+                    params=_params, map_method=map_method[i], 
+                    densfunc=densfunc[i], ro=ro, vo=vo, validate=validate[i], 
+                    pot_kwargs=pot_kwargs[i]))            
+        
+        return pots
+
 
 
 # ----------------------------------------------------------------------------
