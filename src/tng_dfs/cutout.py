@@ -419,7 +419,7 @@ class TNGCutout():
     def center_and_rectify(self,cen_ptype='PartType4', vcen_ptype='PartType4', 
         rot_ptype='PartType4', cen_scheme='ssc', vcen_scheme='bounded_vcom',
         rot_scheme='bounded_L', cen_kwargs={}, vcen_kwargs={}, rot_kwargs={},
-        _use_saved_cen=True):
+        _use_saved_cen=True, _use_saved_vcen=True, _use_saved_rot=True):
         '''center_and_rectify:
         
         Center the simulation on the primary subhalo and rectify the coordinates 
@@ -455,6 +455,10 @@ class TNGCutout():
                 determining the rotation matrix of the primary
             _use_saved_cen (bool) - Use the saved centering information if
                 available [default True]
+            _use_saved_vcen (bool) - Use the saved velocity centering information
+                if available [default True]
+            _use_saved_rot (bool) - Use the saved rotation information if
+                available [default True]
         
         Returns:
             None, but sets self._cen, self._vcen, and self._rot
@@ -487,7 +491,8 @@ class TNGCutout():
                                         internal=True)
             self._vcen_ptype = vcen_ptype
             self._vcen = self.find_velocity_center(vcen_coords, vcen_vels, 
-                vcen_masses, scheme=vcen_scheme, vcen_kwargs=vcen_kwargs)
+                vcen_masses, scheme=vcen_scheme, vcen_ptype=vcen_ptype, 
+                vcen_kwargs=vcen_kwargs, _use_saved_vcen=_use_saved_vcen)
             self._vcen_is_set = True
         
         # Determine rotation matrix
@@ -503,7 +508,8 @@ class TNGCutout():
                                         internal=True)
             self._rot_ptype = rot_ptype
             self._rot = self.find_rotation_matrix(rot_coords, rot_vels, 
-                rot_masses, scheme=rot_scheme, rot_kwargs=rot_kwargs)
+                rot_masses, scheme=rot_scheme, rot_ptype=rot_ptype, 
+                rot_kwargs=rot_kwargs, _use_saved_rot=_use_saved_rot)
             self._rot_is_set = True
         return None 
     
@@ -607,8 +613,8 @@ class TNGCutout():
 
         return cen
     
-    def find_velocity_center(self,coords,vels,masses,scheme='bounded_vcom',
-                             vcen_kwargs={}):
+    def find_velocity_center(self, coords, vels, masses, scheme='bounded_vcom',
+        vcen_ptype=None, vcen_kwargs={}, _use_saved_vcen=True):
         '''find_velocity_center:
         
         Wrapper for determining the net velocity of the subhalo based on a 
@@ -619,18 +625,24 @@ class TNGCutout():
             vels (np.array) - velocities in code units
             masses (np.array) - masses in code units
             scheme (str) - Scheme, see above [default 'bounded_vcom']
+            vcen_ptype (str) - Particle type to use for centering, only used
+                here for completeness & reference [default None]
+            vcen_kwargs (dict) - Keyword arguments to pass to the scheme
+            _use_saved_vcen (bool) - Use the saved centering information if
+                available. Must set vcen_ptype [default True]
         
         Returns:
             vcen (np.array) - length 3 array representing the net velocity of 
                 the subhalo in code units.
         '''
         if scheme == 'bounded_vcom':
-            vcen = self._find_velocity_center_bounded_vcom(coords,vels,masses,
-                **vcen_kwargs)
+            vcen = self._find_velocity_center_bounded_vcom(coords, vels, masses,
+                vcen_ptype=vcen_ptype, **vcen_kwargs, 
+                _use_saved_vcen=_use_saved_vcen)
         return vcen
     
-    def _find_velocity_center_bounded_vcom(self,coords,vels,masses,rmin=None,
-                                           rmax=None):
+    def _find_velocity_center_bounded_vcom(self, coords, vels, masses, 
+        vcen_ptype=None, rmin=None, rmax=None, _use_saved_vcen=True):
         '''_find_velocity_center_bounded_vcom:
         
         Determine the net velocity of the subhalo by calculating the
@@ -652,6 +664,23 @@ class TNGCutout():
         else:
             rmax = util.distance_physical_to_code(rmax,h=self.h,z=self.z)
         
+        # Load file information
+        cdict = util.load_config_to_dict()
+        mw_analog_dir, = util.parse_config_dict(cdict,['MW_ANALOG_DIR'])
+        _file_basename = os.path.basename(self.filename).split('.')[0]
+        vcen_filename = 'vcen_bounded_vcom_'+_file_basename+\
+            '_ptype_indx_'+str(util.ptype_to_indx(vcen_ptype))+\
+            '_rmin_'+str(rmin)+'_rmax_'+str(rmax)+'.npy'
+        vcen_dirname = os.path.join(mw_analog_dir,'stash','vcen',
+            'snap_'+str(self.snapnum))
+
+        # Check if saved centering information is available. Only load if 
+        # ptype information is available.
+        if _use_saved_vcen and (vcen_ptype is not None):
+            if os.path.exists(os.path.join(vcen_dirname,vcen_filename)):
+                vcen = np.load(os.path.join(vcen_dirname,vcen_filename))
+                return vcen
+
         # Find mass-weighted average velocity within radial bounds
         rs = np.sqrt(np.sum(np.square(coords),axis=1))
         vcen_mask = (rs > rmin) & (rs < rmax)
@@ -660,10 +689,17 @@ class TNGCutout():
                 'determining velocity center')
         self._vcen_mask = vcen_mask
         vcen = np.average(vels[vcen_mask,:], axis=0, weights=masses[vcen_mask])
+
+        # Save the centering information, only if ptype info was available.
+        if not (vcen_ptype is None):
+            if not os.path.exists(vcen_dirname):
+                os.makedirs(vcen_dirname)
+            np.save(os.path.join(vcen_dirname,vcen_filename),vcen)
+
         return vcen
     
     def find_rotation_matrix(self,coords,vels,masses,scheme='bounded_L',
-                             rot_kwargs={}):
+        rot_ptype=None, rot_kwargs={}, _use_saved_rot=True):
         '''find_rotation_matrix:
         
         Wrapper for determining rotation matrix based on a supplied scheme.
@@ -673,19 +709,25 @@ class TNGCutout():
             coords (np.array) - coordinates in code units
             vels (np.array) - velocities in code units
             masses (np.array) - masses in code units
+            rot_ptype (str) - Particle type to use for centering, only used
+                here for completeness & reference [default None]
             scheme (str) - Scheme, see above [default 'bounded_L']
+            rot_kwargs (dict) - Keyword arguments to pass to the scheme
+            _use_saved_rot (bool) - Use the saved centering information if
+                available. Must set rot_ptype [default True]
         
         Returns:
             rot (np.array) - 3x3 array representing the matrix that rotates 
                 the 
         '''
         if scheme == 'bounded_L':
-            rot = self._find_rotation_matrix_bounded_L(coords,vels,masses,
-                **rot_kwargs)
+            rot = self._find_rotation_matrix_bounded_L(coords, vels, masses,
+                rot_ptype=rot_ptype, **rot_kwargs, 
+                _use_saved_rot=_use_saved_rot)
         return rot
     
-    def _find_rotation_matrix_bounded_L(self,coords,vels,masses,rmin=None,
-                                        rmax=None):
+    def _find_rotation_matrix_bounded_L(self, coords, vels, masses, 
+        rot_ptype=None, rmin=None, rmax=None, _use_saved_rot=True):
         '''_find_rotation_matrix_bounded_L:
         
         Determine the rotation matrix by calculating the total angular momentum 
@@ -709,7 +751,24 @@ class TNGCutout():
                 internal=True)
         else:
             rmax = util.distance_physical_to_code(rmax,h=self.h,z=self.z)
-        
+
+        # Load file information
+        cdict = util.load_config_to_dict()
+        mw_analog_dir, = util.parse_config_dict(cdict,['MW_ANALOG_DIR'])
+        _file_basename = os.path.basename(self.filename).split('.')[0]
+        rot_filename = 'rot_bounded_L_'+_file_basename+\
+            '_ptype_indx_'+str(util.ptype_to_indx(rot_ptype))+\
+            '_rmin_'+str(rmin)+'_rmax_'+str(rmax)+'.npy'
+        rot_dirname = os.path.join(mw_analog_dir,'stash','rot',
+            'snap_'+str(self.snapnum))
+
+        # Check if saved centering information is available. Only load if 
+        # ptype information is available.
+        if _use_saved_rot and (rot_ptype is not None):
+            if os.path.exists(os.path.join(rot_dirname,rot_filename)):
+                rot = np.load(os.path.join(rot_dirname,rot_filename))
+                return rot
+
         # Calculate angular momentum and rotation
         rs = np.sqrt(np.sum(np.square(coords),axis=1))
         L_mask = (rs > rmin) & (rs < rmax)
@@ -717,6 +776,13 @@ class TNGCutout():
         L = self._calculate_angular_momentum_vector(coords[L_mask],vels[L_mask],
                                                     masses[L_mask])
         rot = self._calculate_rotation_matrix(L)
+
+        # Save the centering information, only if ptype info was available.
+        if not (rot_ptype is None):
+            if not os.path.exists(rot_dirname):
+                os.makedirs(rot_dirname)
+            np.save(os.path.join(rot_dirname,rot_filename),rot)
+
         return rot
     
     def _calculate_angular_momentum_vector(self,coords,vels,masses):
