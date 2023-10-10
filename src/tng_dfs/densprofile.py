@@ -276,6 +276,7 @@ class TwoPowerSpherical(SphericalDensityProfile):
             densfunc = TwoPowerSpherical()
         alpha, beta, a, amp = densfunc._parse_params(params)
 
+        if map_method is None: map_method = 'mass_at_a'
         if map_method == 'mass_at_a':
             _pot = potential.TwoPowerSphericalPotential(amp=1., a=a*apu.kpc, 
                 alpha=alpha, beta=beta, ro=ro, vo=vo, **pot_kwargs)
@@ -284,6 +285,8 @@ class TwoPowerSpherical(SphericalDensityProfile):
             _amp = _dmass/_pmass
             pot = potential.TwoPowerSphericalPotential(amp=_amp, a=a*apu.kpc, 
                 alpha=alpha, beta=beta, ro=ro, vo=vo, **pot_kwargs)
+        else:
+            raise ValueError('Not a valid map_method')
         
         if validate:
             tol = 1e-8
@@ -416,6 +419,7 @@ class NFWSpherical(SphericalDensityProfile):
             densfunc = NFWSpherical()
         a, amp = densfunc._parse_params(params)
 
+        if map_method is None: map_method = 'mass_at_a'
         if map_method == 'mass_at_a':
             _pot = potential.NFWPotential(amp=1., a=a*apu.kpc, ro=ro, vo=vo, 
                 **pot_kwargs)
@@ -424,6 +428,8 @@ class NFWSpherical(SphericalDensityProfile):
             _amp = _dmass/_pmass
             pot = potential.NFWPotential(amp=_amp, a=a*apu.kpc, ro=ro, vo=vo, 
                 **pot_kwargs)
+        else:
+            raise ValueError('Not a valid map_method')
         
         if validate:
             tol = 1e-8
@@ -811,6 +817,7 @@ class SinglePowerCutoffSpherical(SphericalDensityProfile):
             densfunc = SinglePowerCutoffSpherical()
         alpha, rc, amp = densfunc._parse_params(params)
 
+        if map_method is None: map_method = 'mass_at_rc'
         if map_method == 'mass_at_rc':
             _pot = potential.PowerSphericalPotentialwCutoff(amp=1., alpha=alpha, 
                 rc=rc*apu.kpc, ro=ro, vo=vo, **pot_kwargs)
@@ -819,6 +826,8 @@ class SinglePowerCutoffSpherical(SphericalDensityProfile):
             _amp = _dmass/_pmass
             pot = potential.PowerSphericalPotentialwCutoff(amp=_amp, 
                 alpha=alpha, rc=rc*apu.kpc, ro=ro, vo=vo, **pot_kwargs)
+        else:
+            raise ValueError('Not a valid map_method')
         
         if validate:
             tol = 1e-8
@@ -986,6 +995,7 @@ class DoubleExponentialDisk(AxisymmetricDensityProfile):
             densfunc = DoubleExponentialDisk()
         hr, hz, amp = densfunc._parse_params(params)
 
+        if map_method is None: map_method = 'mass_at_scale'
         if map_method == 'mass_at_scale':
             _pot = potential.DoubleExponentialDiskPotential(amp=1., 
                 hr=hr*apu.kpc, hz=hz*apu.kpc, ro=ro, vo=vo, **pot_kwargs)
@@ -995,6 +1005,8 @@ class DoubleExponentialDisk(AxisymmetricDensityProfile):
             _amp = _dmass/_pmass
             pot = potential.DoubleExponentialDiskPotential(amp=_amp, 
                 hr=hr*apu.kpc, hz=hz*apu.kpc, ro=ro, vo=vo, **pot_kwargs)
+        else:
+            raise ValueError('Not a valid map_method')
         
         if validate:
             tol = 1e-8
@@ -1190,7 +1202,7 @@ class MiyamotoNagaiDisk(AxisymmetricDensityProfile):
         else:
             raise NotImplementedError("mass not implemented for non-integrated case")
     
-    def densfunc_to_pot(self, params, map_method='mass_at_scale', densfunc=None, 
+    def densfunc_to_pot(self, params, map_method='total_mass', densfunc=None, 
         ro=_ro, vo=_vo, validate=True, pot_kwargs={}):
         '''densfunc_to_pot:
 
@@ -1218,6 +1230,7 @@ class MiyamotoNagaiDisk(AxisymmetricDensityProfile):
             densfunc = MiyamotoNagaiDisk()
         a, b, amp = densfunc._parse_params(params)
 
+        if map_method is None: map_method = 'mass_at_scale'
         if map_method == 'mass_at_scale':
             _pot = potential.MiyamotoNagaiPotential(amp=1., 
                 a=a*apu.kpc, b=b*apu.kpc, ro=ro, vo=vo, **pot_kwargs)
@@ -1227,16 +1240,18 @@ class MiyamotoNagaiDisk(AxisymmetricDensityProfile):
             _amp = _dmass/_pmass
             pot = potential.MiyamotoNagaiPotential(amp=_amp, 
                 a=a*apu.kpc, b=b*apu.kpc, ro=ro, vo=vo, **pot_kwargs)
-        if map_method == 'total_mass':
+        elif map_method == 'total_mass':
             pot = potential.MiyamotoNagaiPotential(amp=amp*apu.Msun, 
                 a=a*apu.kpc, b=b*apu.kpc, ro=ro, vo=vo, **pot_kwargs)
+        else:
+            raise ValueError('Not a valid map_method')
         
         if validate:
             tol = 1e-8
             rs = np.logspace(-1, np.log10(5*a), num=30)*apu.kpc
             # Mass
-            gmass = np.array([ pot.mass(r).to(apu.Msun).value for r in rs ])
-            dmass = densfunc.mass(rs, params)
+            gmass = np.array([ pot.mass(r, b*apu.kpc).to(apu.Msun).value for r in rs ])
+            dmass = densfunc.mass(rs, params, zmax=b*apu.kpc)
             assert np.all(np.abs((gmass-dmass)/dmass) < tol)
             # Density
             gdens = pot.dens(rs, b*apu.kpc).to(apu.Msun/apu.kpc**3).value
