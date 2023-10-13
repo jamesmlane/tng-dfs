@@ -13,13 +13,18 @@
 __author__ = "James Lane"
 
 ### Imports
+import os
 import numpy as np
+import dill as pickle
 from . import densprofile as pdens
 import scipy.stats
 import multiprocessing
 import emcee
 import time
 from . import util as putil
+
+_ro = 8.275
+_vo = 220.
 
 # ----------------------------------------------------------------------------
 
@@ -649,7 +654,7 @@ def mloglike_fJ(*args,**kwargs):
 
     Wrapper for the loglike function that returns the negative log likelihood
     '''
-    return -loglike(*args,**kwargs)
+    return -loglike_fJ(*args,**kwargs)
 
 def loglike_fJ():
     '''
@@ -660,3 +665,39 @@ def logprior_fJ():
     '''
     '''
     pass
+
+# ----------------------------------------------------------------------------
+
+### Utilities for fitting
+
+
+def construct_pot_from_fit(sampler_filename, densfunc, ncut=None, 
+    ro=_ro, vo=_vo, densfunc_to_pot_kwargs={}):
+    '''construct_pot_from_fit:
+
+    Args:
+        sampler_filename (str): Filename of the sampler
+        densfunc (function): Function that returns the density profile
+        ncut (int): Number of MCMC iterations to discard as burn-in
+        ro (float): Distance scale in kpc [default=_ro]
+        vo (float): Velocity scale in km/s [default=_vo]
+        densfunc_to_pot_kwargs (dict): Keyword arguments for 
+            densfunc.densfunc_to_pot()
+    
+    Returns:
+        dm_halo_pot (function): Function that returns the potential
+    '''    
+    # Make sure the DM halo filename exists
+    assert os.path.exists(sampler_filename), \
+        'Sampler file does not exist'
+    with open(sampler_filename,'rb') as handle:
+        sampler = pickle.load(handle)
+    if ncut is None:
+        ncut = int(sampler.iteration/2)
+    samples = sampler.get_chain(discard=ncut, flat=True)
+    
+    # Should be able to just punt to the pot converter
+    pot = densfunc.densfunc_to_pot(np.median(samples, axis=0), 
+        ro=ro, vo=vo, **densfunc_to_pot_kwargs)
+    
+    return pot
