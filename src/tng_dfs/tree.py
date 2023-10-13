@@ -928,20 +928,68 @@ class TreeMajorMerger(TreeInfo):
                 merger
             scheme_kwargs (dict) - Dictionary of keyword arguments used to
                 identify the merger
+            primary_star_mass (float) - Stellar mass of the primary subhalo
+            primary_dm_mass (float) - Dark matter mass of the primary subhalo
+            primary_mass_snapnum (int) - Snapshot number where the primary
+                subhalo masses is determined
+            secondary_star_mass (float) - Stellar mass of the secondary subhalo
+            secondary_dm_mass (float) - Dark matter mass of the secondary subhalo
+            secondary_mass_snapnum (int) - Snapshot number where the secondary
+                subhalo masses is determined
         '''
         # Initialize base class
         super(TreeMajorMerger,self).__init__(tree_filename)
 
         # Initialize this class
+
+        # MLPIDs
         self.secondary_mlpid = kwargs.get('secondary_mlpid',None)
         self.primary_mlpid = kwargs.get('primary_mlpid',None)
+
+        # Mass ratios and snapshots when they are determined
         self.star_mass_ratio = kwargs.get('star_mass_ratio',None)
         self.star_mass_ratio_snapnum = kwargs.get('star_mass_ratio_snapnum',None)
         self.dm_mass_ratio = kwargs.get('dm_mass_ratio',None)
         self.dm_mass_ratio_snapnum = kwargs.get('dm_mass_ratio_snapnum',None)
         self.merger_snapnum = kwargs.get('merger_snapnum',None)
+        
+        # Get redshifts corresponding to snapshots
+        self.star_mass_ratio_redshift = None
+        if self.star_mass_ratio_snapnum is not None:
+            self.star_mass_ratio_redshift = putil.snapshot_to_redshift(
+                self.star_mass_ratio_snapnum)
+        self.dm_mass_ratio_redshift = None
+        if self.dm_mass_ratio_snapnum is not None:
+            self.dm_mass_ratio_redshift = putil.snapshot_to_redshift(
+                self.dm_mass_ratio_snapnum)
+        self.merger_redshift = None
+        if self.merger_snapnum is not None:
+            self.merger_redshift = putil.snapshot_to_redshift(
+                self.merger_snapnum)
+        
+        # Scheme used to get the mass ratios
         self.scheme = kwargs.get('scheme',None)
         self.scheme_kwargs = kwargs.get('scheme_kwargs',None)
+
+        # Masses of the primary and secondary subhalos and the snapshots
+        # when they are determined
+        self.primary_star_mass = kwargs.get('primary_star_mass',None)
+        self.primary_dm_mass = kwargs.get('primary_dm_mass',None)
+        self.primary_mass_snapnum = kwargs.get('primary_mass_snapnum',None)
+        self.secondary_star_mass = kwargs.get('secondary_star_mass',None)
+        self.secondary_dm_mass = kwargs.get('secondary_dm_mass',None)
+        self.secondary_mass_snapnum = kwargs.get('secondary_mass_snapnum',None)
+        self.primary_mass_redshift = None
+
+        # Get redshifts corresponding to snapshots
+        self.primary_mass_redshift = None
+        if self.primary_mass_snapnum is not None:
+            self.primary_mass_redshift = putil.snapshot_to_redshift(
+                self.primary_mass_snapnum)
+        self.secondary_mass_redshift = None
+        if self.secondary_mass_snapnum is not None:
+            self.secondary_mass_redshift = putil.snapshot_to_redshift(
+                self.secondary_mass_snapnum)
 
         # Use the tree to get some of the important information
         self.snapnum = None
