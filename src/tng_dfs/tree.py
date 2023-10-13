@@ -883,14 +883,22 @@ class TreePrimary(TreeInfo):
         # Initialize this class
         self.tree_major_mergers = tree_major_mergers
         self.n_major_mergers = len(tree_major_mergers)
-        self.mlpid = kwargs.get('mlpid',None)
+        # self.mlpid = kwargs.get('mlpid',None)
+        self.primary_mlpid = self.mlpid
+        self.primary_star_mass = kwargs.get('primary_star_mass',None)
+        self.primary_dm_mass = kwargs.get('primary_dm_mass',None)
+        self.primary_mass_snapnum = kwargs.get('primary_mass_snapnum',None)
+        self.primary_mass_redshift = None
+        if self.primary_mass_snapnum is not None:
+            self.primary_mass_redshift = putil.snapshot_to_redshift(
+                self.primary_mass_snapnum)
         
         # Use the tree to get some of the important information
         self.snapnum = None
         self.subfind_id = None
         if self.tree_filename is not None:
             tree = self.get_tree()
-            assert self.mlpid == tree.get_property('MainLeafProgenitorID')[0]
+            assert self.primary_mlpid == tree.get_property('MainLeafProgenitorID')[0]
             self.snapnum = tree.main_branch_snap
             self.subfind_id = tree.get_property('SubfindID')[tree.main_branch_mask]
 
