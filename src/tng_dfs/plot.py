@@ -1791,3 +1791,116 @@ def plot_E_Enorm_Jz_Jcirc_margins(orbs,E,Jcirc,masses=None,plot_hist=True,
         labelbottom=False,labelsize=margin_label_fs)
 
     return fig, (ax,axl,axt,axr)
+
+
+### Plotting utilities
+
+def plot_elements_out_of_bounds_as_arrows(x, y, ax, fig=None, 
+    xrange=None, yrange=None, fx=0.05, fy=0.05, dfx=0.025, dfy=0.025,
+    arrow_with_count=False, arrow_kwargs=None, text_kwargs=None):
+    '''plot_elements_out_of_bounds_as_arrows:
+
+    Plot elements that are outside of axis limits as arrows pointing to the 
+    side of the axis they are out of bounds on
+    
+    Args:
+
+    '''
+    # Wrangle input
+    assert len(x) == len(y), 'x and y must have the same shape'
+    n = len(x)
+    
+    # Fill in xrange from the current axis limits?
+    if xrange is None:
+        xrange = ax.get_xlim()
+    if yrange is None:
+        yrange = ax.get_ylim()
+    xsize = xrange[1] - xrange[0]
+    ysize = yrange[1] - yrange[0]
+
+    # Fill in empty arrow kwargs dict
+    if arrow_kwargs is None: arrow_kwargs = {}
+    if 'length_includes_head' not in arrow_kwargs.keys():
+        arrow_kwargs['length_includes_head'] = True
+    if 'width' not in arrow_kwargs.keys():
+        arrow_kwargs['width'] = 0.001
+    if 'head_width' not in arrow_kwargs.keys():
+        arrow_kwargs['head_width'] = fx/3.
+    if 'head_length' not in arrow_kwargs.keys():
+        arrow_kwargs['head_length'] = fx/3.
+    if 'head_starts_at_zero' not in arrow_kwargs.keys():
+        arrow_kwargs['head_starts_at_zero'] = True
+    if 'fc' not in arrow_kwargs.keys():
+        arrow_kwargs['fc'] = 'Black'
+    if 'ec' not in arrow_kwargs.keys():
+        arrow_kwargs['ec'] = 'Black'
+    if 'transform' not in arrow_kwargs.keys():
+        arrow_kwargs['transform'] = ax.transAxes
+
+    # Fill in empty text kwargs dict
+    if text_kwargs is None: text_kwargs = {}
+    if 'transform' not in text_kwargs.keys():
+        text_kwargs['transform'] = ax.transAxes
+    if 'fontsize' not in text_kwargs.keys():
+        text_kwargs['fontsize'] = 12
+    if 'ha' not in text_kwargs.keys():
+        text_kwargs['ha'] = 'center'
+    if 'va' not in text_kwargs.keys():
+        text_kwargs['va'] = 'center'
+    
+
+    # Figure out how many elements are out of bounds
+    xmask = np.logical_or(x < xrange[0], x > xrange[1])
+    ymask = np.logical_or(y < yrange[0], y > yrange[1])
+    
+    if np.any( xmask & ymask ):
+        warnings.warn('''Some elements are out of bounds in both x and y,
+                         these are not plotted''')
+
+    if arrow_with_count:
+        ns = [np.sum( (x < xrange[0]) & ~ymask),
+              np.sum( (x > xrange[1]) & ~ymask),
+              np.sum( (y < yrange[0]) & ~xmask),
+              np.sum( (y > yrange[1]) & ~xmask)]
+        _xs = [fx, (1-fx), 0.5, 0.5]
+        _ys = [0.5, 0.5, fy, (1-fy)]
+        dxs = [-fx+dfx, fx-dfx, 0., 0.]
+        dys = [0., 0., -fy+dfy, fy-dfy]
+        
+        for i in range(len(ns)):
+            if ns[i] == 0: continue
+            ax.arrow(_xs[i], _ys[i], dxs[i], dys[i], **arrow_kwargs)
+            ax.text(_xs[i]+0.01, _ys[i], str(ns[i]), **text_kwargs)
+
+    else:
+        # Plot arrows for each element out of bounds
+        for i in range(n):
+            if xmask[i] and not ymask[i]:
+                _y = (y[i]-yrange[0])/ysize
+                dy = 0.
+                if x[i] < xrange[0]:
+                    _x = fx
+                    dx = -fx+dfx
+                else:
+                    _x = (1-fx)
+                    dx = fx-dfx
+                ax.arrow(_x, _y, dx, dy, **arrow_kwargs)
+                # ax.text(_x+0.01, _y, str(ns[i]), **text_kwargs)
+            
+            elif ymask[i] and not xmask[i]:
+                _x = (x[i]-xrange[0])/xsize
+                dx = 0.
+                if y[i] < yrange[0]:
+                    _y = fy
+                    dy = -fy+dfy
+                else:
+                    _y = (1-fy)
+                    dy = fy-dfy
+                ax.arrow(_x, _y, dx, dy, **arrow_kwargs)
+
+            else: continue
+
+    if fig is not None:
+        return fig,ax
+    else:
+        return ax
