@@ -707,3 +707,30 @@ def flatten_list(nested_list, recursive=True, flatten_types=[list,tuple]):
             for el in element:
                 flattened_list.append(el)
     return flattened_list
+
+def moving_average(data, window_size):
+    '''
+    Compute the moving average of a list for a given window size.
+
+    Parameters:
+    - data: List of numeric values.
+    - window_size: Size of the moving average window.
+
+    Returns:
+    - List of moving averages.
+    '''
+    if window_size <= 0:
+        raise ValueError("Window size must be a positive integer.")
+
+    moving_averages = []
+    window_sum = 0
+
+    for i in range(len(data)):
+        window_sum += data[i]
+
+        if i >= window_size - 1:
+            moving_average = window_sum / window_size
+            moving_averages.append(moving_average)
+            window_sum -= data[i - window_size + 1]
+
+    return moving_averages
