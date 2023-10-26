@@ -251,6 +251,8 @@ def prepare_mwsubs(mw_analog_dir,h=_HUBBLE_PARAM,mw_mass_range=[5,7],
         mwsubs_dict = [mwsubs_dict[i] for i in range(n_mw) if bulge_disk_fraction_mask[i]]
         n_mw = len(mwsubs)
         print('Cut to ',n_mw,' subhalos')
+    else:
+        bulge_disk_fraction_mask = None
 
     if return_vars:
         vars = {'baseURL':baseURL,'sim_names':sim_names,
