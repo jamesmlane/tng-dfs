@@ -683,3 +683,27 @@ def find_contiguous(mask):
         contigs.append(tuple(contig))
         
     return contigs
+
+def flatten_list(nested_list, recursive=True, flatten_types=[list,tuple]):
+    '''flatten_nested_list:
+    
+    Flatten a nested list into a single list.
+    
+    Args:
+        a (list) - Nested list
+        recursive (bool) - Continue to flatten sublists until all that remains
+            are elements which are not in recursive_types, default False.
+        recursive_types (list) - Types of elements to continue flattening
+            if recursive is True, default [list,tuple]
+    
+    Returns:
+        a_lin (list) - Flattened list
+    '''
+    flattened_list = []
+    for element in nested_list:
+        if recursive and any(isinstance(element, t) for t in flatten_types):
+            flattened_list.extend(flatten_list(element, recursive, flatten_types))
+        else:
+            for el in element:
+                flattened_list.append(el)
+    return flattened_list
