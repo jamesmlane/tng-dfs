@@ -243,6 +243,20 @@ def calculate_spherical_jeans(orbs,pot=None,pe=None,n_bootstrap=1,
             equation, output from calculate_spherical_jeans_quantities, 
             in order: dnuvr2dr,dphidr,nu,vr2,vp2,vt2,rs
     '''
+    if adaptive_binning or isinstance(adaptive_binning,dict):
+        # If adaptive binning is a dictionary, then use that as the keyword
+        # arguments for the adaptive binning routine
+        if isinstance(adaptive_binning,dict):
+            kwargs = adaptive_binning
+        else:
+            kwargs = {}
+        # Get the bins for derivatives
+        dr_bin_edge,_,_ = get_radius_binning(orbs,**kwargs)
+        n_dr_bin = len(dr_bin_edge)-1
+        n_bin = n_dr_bin-1
+        adaptive_binning = False
+        bin_edge = dr_bin_edge
+
     # Compute the quantities for the spherical Jeans equation
     if n_bootstrap>1:
         qs = np.zeros((7,n_bootstrap,n_bin))
