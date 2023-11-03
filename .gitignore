@@ -24,8 +24,9 @@ notebooks/**/plots/
 # Configuration files
 *config.txt
 
-# Scratch space
+# Scratch and work space
 scratch/
+work/
 
 # Movies
 *.mp4
