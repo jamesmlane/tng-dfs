@@ -410,38 +410,45 @@ def logprior_dens(densfunc, params):
         logprior (float): Log prior on the density profile
     '''
     if isinstance(densfunc, pdens.TwoPowerSpherical):
-        alpha,beta,a,_ = params
-        # Place a log-uniform prior on alpha
-        alpha_min = 0.001
-        alpha_max = 1000.
-        prior_alpha = scipy.stats.loguniform.pdf(alpha, alpha_min, alpha_max)
-        # Place a log-uniform prior on beta
-        beta_min = 0.001
-        beta_max = 1000.
-        prior_beta = scipy.stats.loguniform.pdf(beta, beta_min, beta_max)
-        # Place a log-uniform prior on a
-        a_min = 0.001
-        a_max = 1000.
-        prior_a = scipy.stats.loguniform.pdf(a, a_min, a_max)
-        return np.log(prior_alpha*prior_beta*prior_a)
+        return 0.
+        # alpha,beta,a,_ = params
+        # # Place a log-uniform prior on alpha
+        # alpha_min = 0.001
+        # alpha_max = 1000.
+        # prior_alpha = scipy.stats.loguniform.pdf(alpha, alpha_min, alpha_max)
+        # # Place a log-uniform prior on beta
+        # beta_min = 0.001
+        # beta_max = 1000.
+        # prior_beta = scipy.stats.loguniform.pdf(beta, beta_min, beta_max)
+        # # Place a log-uniform prior on a
+        # a_min = 0.001
+        # a_max = 1000.
+        # prior_a = scipy.stats.loguniform.pdf(a, a_min, a_max)
+        # return np.log(prior_alpha*prior_beta*prior_a)
     if isinstance(densfunc, pdens.NFWSpherical):
-        a,_ = params
-        # Place a log-uniform prior on a
-        a_min = 0.001
-        a_max = 1000.
-        prior_a = scipy.stats.loguniform.pdf(a, a_min, a_max)
-        return np.log(prior_a)
+        return 0.
+        # a,_ = params
+        # # Place a log-uniform prior on a
+        # a_min = 0.001
+        # a_max = 1000.
+        # prior_a = scipy.stats.loguniform.pdf(a, a_min, a_max)
+        # if prior_a == 0:
+        #     return -np.inf
+        # return np.log(prior_a)
     if isinstance(densfunc, pdens.SinglePowerCutoffSpherical):
-        alpha,rc,_ = params
+        return 0.
+        # alpha,rc,_ = params
         # Place a log-uniform prior on alpha
         # alpha_min = 0.001
         # alpha_max = 1000.
         # prior_alpha = scipy.stats.loguniform.pdf(alpha, alpha_min, alpha_max)
         # Place a log-uniform prior on rc
-        rc_min = 0.001
-        rc_max = 100.
-        prior_rc = scipy.stats.loguniform.pdf(rc, rc_min, rc_max)
-        return np.log(prior_rc)
+        # rc_min = 0.001
+        # rc_max = 100.
+        # prior_rc = scipy.stats.loguniform.pdf(rc, rc_min, rc_max)
+        # if prior_rc == 0:
+        #     return -np.inf
+        # return np.log(prior_rc)
     if isinstance(densfunc, pdens.DoubleExponentialDisk):
         return 0.
         # hR,hz,_ = params
@@ -486,8 +493,8 @@ def domain_prior_dens(densfunc, params):
     '''
     if isinstance(densfunc, pdens.TwoPowerSpherical):
         alpha,beta,a,amp = params
-        if alpha <= 0: return False
-        if alpha >= beta: return False
+        # if alpha <= 0: return False
+        # if alpha >= beta: return False
         # if beta > 10: return False
         if a <= 0: return False
         if amp <= 0: return False
