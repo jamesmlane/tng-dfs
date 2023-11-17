@@ -631,6 +631,39 @@ def parse_astropy_quantity(q, unit):
         q = np.array([parse_astropy_quantity(qq,unit) for qq in q])
     return q
 
+def get_softening_length(ptype, z=0, sim_name='TNG50-1', physical=True):
+    '''get_softening_length:
+    
+    Get the softening length for a given particle type at a given redshift.
+
+    Args:
+        ptype
+    '''
+    baseURL = 'http://www.tng-project.org/api/'
+    sim = get( baseURL+sim_name )
+    ptype_str = ptype_to_str(ptype)
+    a = 1./(z+1)
+    if ptype_str == 'PartType0': # DM
+        softening_length_comoving = sim['softening_dm_comoving']
+        softening_length_code = softening_length_comoving*a
+        softening_max_code = sim['softening_dm_max_phys']
+        softening_length_code = np.min([softening_length_code,
+                                        softening_max_code])
+    elif ptype_str == 'PartType4': # Stars
+        softening_length_comoving = sim['softening_stars_comoving']
+        softening_length_code = softening_length_comoving*a
+        softening_max_code = sim['softening_stars_max_phys']
+        softening_length_code = np.min([softening_length_code,
+                                        softening_max_code])
+    else:
+        raise ValueError('Only PartType0 and 4 are supported')
+
+    if physical:
+        # Set z=0 because we already did comoving -> fixed
+        return distance_code_to_physical(softening_length_code, z=0)
+    else:
+        return softening_length_code
+
 # ----------------------------------------------------------------------------
 
 # Pathing functions
