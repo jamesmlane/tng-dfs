@@ -757,22 +757,33 @@ def half_mass_radius(rs,masses):
 
 ### Sampling from rotating DFs ###
 
-def rotate_df_samples(orbs, frot=0., chi=None, rotation_sign=1.):
+def rotate_df_samples(orbs, frot, chi):
     '''rotate_df_samples:
     
-    Take a set of sampled orbits and flip Lz for some of them such the rotating 
+    Take a set of orbits and flip Lz for some of them such that the rotating 
     tanh kernel DF is satisfied.
 
     Args:
-
+        orbs (Orbits) - Orbits object to rotate
+        frot (float) - Fraction of orbits to rotate, must be between -1 and 1
+        chi (float) - Characteristic angular momentum scale in kpc km/s
+    
+    Returns:
+        orbs_rot (Orbits) - Orbits object with some orbits rotated such
     '''
+    # Check input parameters
+    assert frot>=-1. and frot<=1., "frot must be between -1 and 1"
+    rotation_sign = np.sign(frot)
+    assert chi > 0., "chi must be greater than 0"
+
+    # Copy the orbits
     vxvv_rot = copy.deepcopy(orbs.vxvv)
     Lz = orbs.Lz(use_physical=True)
     if isinstance(Lz,apu.Quantity):
         Lz = Lz.to(apu.kpc*apu.km/apu.s).value
 
     # Probability of flipping the tangential velocity
-    pflip = 1-df_rotation_function(rotation_sign*Lz, frot=frot, chi=chi)
+    pflip = 1-df_rotation_function(rotation_sign*Lz, frot=np.abs(frot), chi=chi)
     _p = np.random.uniform(size=len(orbs))
     flip_mask = _p < pflip
     # Lz_to_be_flipped = rotation_sign*Lz < 0.
@@ -791,7 +802,7 @@ def df_rotation_function(Lz, frot=0., chi=1.):
 
 
     '''
-    assert frot>=0. and frot<=1., "frot must be between 0 and 1"
+    assert frot>=-1. and frot<=1., "frot must be between -1 and 1"
     if isinstance(Lz,apu.Quantity):
         Lz = Lz.to(apu.kpc*apu.km/apu.s).value
     if isinstance(chi,apu.Quantity):
