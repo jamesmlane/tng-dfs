@@ -1795,6 +1795,13 @@ def plot_E_Enorm_Jz_Jcirc_margins(orbs,E,Jcirc,masses=None,plot_hist=True,
 
 ### Plotting utilities
 
+def get_latex_columnwidth_textwidth_inches():
+    # Column-sized figure width
+    columnwidth = 244./72.27 # In inches, from pt
+    # Full-sized figure width
+    textwidth = 508./72.27 # In inches, from pt
+    return columnwidth, textwidth
+
 def plot_elements_out_of_bounds_as_arrows(x, y, ax, fig=None, 
     xrange=None, yrange=None, fx=0.05, fy=0.05, dfx=0.025, dfy=0.025,
     arrow_with_count=False, arrow_kwargs=None, text_kwargs=None):
