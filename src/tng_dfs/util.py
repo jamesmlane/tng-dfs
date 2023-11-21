@@ -114,26 +114,31 @@ def parse_config_dict(cdict,keyword):
         assert _keyword[0] in cdict, 'Keyword not in cdict'
     
     for key in _keyword:
+        float_keys = ['RO','VO','ZO','LITTLE_H']
+        int_keys = []
+        string_keys = ['HOME_DIR','DATA_DIR','MW_ANALOG_DIR','FIG_DIR_BASE',
+                       'FITTING_DIR_BASE']
+        list_keys = ['MW_MASS_RANGE']
         # Floats
-        if key in ['RO','VO','ZO','LITTLE_H']:
+        if key in float_keys:
             if _islist:
                 _value.append( float(cdict[key]) )
             else:
                 return float(cdict[key])   
         # Ints
-        elif key in []:
+        elif key in int_keys:
             if _islist:
                 _value.append( int(cdict[key]) )
             else:
                 return int(cdict[key])
         # Strings 
-        elif key in ['HOME_DIR','DATA_DIR','MW_ANALOG_DIR']:
+        elif key in string_keys:
             if _islist:
                 _value.append( cdict[key] )
             else:
                 return cdict[key]
         # Lists
-        elif key in ['MW_MASS_RANGE']:
+        elif key in list_keys:
             if _islist:
                 _arr = cdict[key].strip('][').split(',')
                 _arr = [float(x) for x in _arr]

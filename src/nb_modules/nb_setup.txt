@@ -1,9 +1,9 @@
 # Keywords
 cdict = putil.load_config_to_dict()
-keywords = ['DATA_DIR','MW_ANALOG_DIR','RO','VO','ZO','LITTLE_H',
-            'MW_MASS_RANGE']
-data_dir,mw_analog_dir,ro,vo,zo,h,mw_mass_range = \
-    putil.parse_config_dict(cdict,keywords)
+keywords = ['DATA_DIR','MW_ANALOG_DIR','FIG_DIR_BASE','FITTING_DIR_BASE',
+            'RO','VO','ZO','LITTLE_H','MW_MASS_RANGE']
+data_dir,mw_analog_dir,fig_dir_base,fitting_dir_base,ro,vo,zo,h,\
+    mw_mass_range = putil.parse_config_dict(cdict,keywords)
 
 # MW Analog 
 mwsubs,mwsubs_vars = putil.prepare_mwsubs(mw_analog_dir,h=h,
@@ -11,10 +11,10 @@ mwsubs,mwsubs_vars = putil.prepare_mwsubs(mw_analog_dir,h=h,
     bulge_disk_fraction_cuts=True)
 
 # Figure path
-fig_dir = './fig/sample/'
-epsen_fig_dir = '/epsen_data/scr/lane/projects/tng-dfs/figs/notebooks/sample/'
+local_fig_dir = './fig/'
+fig_dir = os.path.join(fig_dir_base, 'notebooks')
+os.makedirs(local_fig_dir,exist_ok=True)
 os.makedirs(fig_dir,exist_ok=True)
-os.makedirs(epsen_fig_dir,exist_ok=True)
 show_plots = False
 
 # Load tree data
