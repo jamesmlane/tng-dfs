@@ -39,14 +39,11 @@ def load_subhalo_list(filename,recarray=True):
     # the TNG API
     with open(filename,'rb') as f:
         subs = pickle.load(f)
-    ##wi
     
     if recarray:
         return subhalo_list_to_recarray(subs)
     else:
         return subs
-    ##ie
-#def
 
 def subhalo_list_to_recarray(subs):
     '''subhalo_list_to_recarray:
@@ -71,19 +68,14 @@ def subhalo_list_to_recarray(subs):
             if k not in keys:
                 if k in subdict_keys or isinstance(d[k],dict):
                     continue # We'll do these at the end
-                ##fi
                 keys.append(k)
                 if i>0: print('Warning: new key not in the first dict, '+\
                               str(k))
-            ##fi
-        ###i
-    ###i
 
     for i,d in enumerate(subs):
         for j,k in enumerate(d.keys()):
             if not isinstance(d[k],dict):
                 continue # Assume entry is dictionary
-            ##fi
             for kk in d[k]:
                 subkey = k+':'+kk
                 if subkey in keys:
@@ -91,9 +83,6 @@ def subhalo_list_to_recarray(subs):
                 keys.append(subkey)
                 if i>0: print('Warning: new key not in the first dict, '+\
                               str(subkey))
-            ##kk
-        ###k
-    ###i
 
     # dtype should be int
     is_int = ['snap','id','len','len_gas','len_dm','len_stars','len_bhs',
@@ -109,8 +98,6 @@ def subhalo_list_to_recarray(subs):
             dt.append( (k,object) )
         else:
             dt.append( (k,float) )
-        ##ie
-    ###k
 
     subs_rec = np.recarray((len(dt),),dtype=dt)
 
@@ -126,20 +113,14 @@ def subhalo_list_to_recarray(subs):
                     except KeyError: 
                         subdict = None
                         break
-                    ##te
-                ##kk
                 subs_rec[k] = subdict
             else:
                 try:
                     subs_rec[k] = d[k]
                 except KeyError:
                     subs_rec[k] = None
-                ##te
-            ##ie
-        ###j
-    ###i
     
     return subs_rec
-#def
 
 # ----------------------------------------------------------------------------
+
