@@ -191,7 +191,7 @@ def calculate_spherical_jeans(orbs,pot=None,pe=None,n_bootstrap=1,
     r_range=[0,100],n_bin=10,norm_by_galpy_scale_units=False,
     norm_by_nuvr2_r=True,calculate_pe_with_pot=False,
     adaptive_binning=False,bin_edge=None,
-    rs_is_bin_mean_r=False,return_kinematics=True,
+    rs_is_bin_mean_r=True,return_kinematics=True,
     return_terms=False,t=0.,ro=_ro,vo=_vo):
     '''calculate_spherical_jeans:
 
