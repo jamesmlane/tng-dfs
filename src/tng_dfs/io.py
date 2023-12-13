@@ -15,7 +15,8 @@ __author__ = "James Lane"
 ### Imports
 import numpy as np
 import dill as pickle
-import pdb
+import os
+# import pdb
 
 # ----------------------------------------------------------------------------
 
@@ -124,3 +125,45 @@ def subhalo_list_to_recarray(subs):
 
 # ----------------------------------------------------------------------------
 
+# Loading emcee samplers
+
+def median_params_from_emcee_sampler(filename, ncut=0, nthin=1, 
+    percentiles=[50,], return_samples=False):
+    '''median_params_from_emcee_sampler:
+
+    Load an emcee sampler and return the median parameters (or percentiles)
+
+    Args:
+        filename (string) - filename of emcee sampler (assume pickled)
+        ncut (int) - Number of samples to cut from the beginning of the chain, 
+            default is 0
+        nthin (int) - Number of samples to thin the chain by, default is 0
+        percentiles (list) - List of percentiles to return, default is [50,]
+            (i.e. the median)
+        return_samples (bool) - Return the samples? Default is False
+    
+    Returns:
+        params (array) - Array of parameters defined by percentiles with shape
+            (nparams,len(percentiles))
+        samples (array) - Array of samples from the emcee sampler if 
+            return_samples is True
+    '''
+    assert os.path.isfile(filename), "File not found: "+str(filename)
+    assert ncut >= 0, "ncut must be >= 0"
+    assert nthin >= 0, "nthin must be >= 0"
+    assert isinstance(percentiles,list), "percentiles must be a list"
+
+    # Load the sampler
+    with open(filename,'rb') as f:
+        sampler = pickle.load(f)
+    
+    # Get the samples
+    samples = sampler.get_chain(discard=ncut,thin=nthin,flat=True)
+
+    # Get the percentiles, transpose to get shape (nparams,len(percentiles))
+    params = np.percentile(samples,percentiles,axis=0).T
+
+    if return_samples:
+        return params, samples
+    else:
+        return params
