@@ -277,14 +277,13 @@ def prepare_mwsubs(mw_analog_dir,h=_HUBBLE_PARAM,mw_mass_range=[5,7],
 
 # API Querying
 
-def get(path, params=None, timeout=10, directory='./', timeit=False):
+def get(path, params=None, timeout=60, directory='./', timeit=False):
     '''get:
     
     Make and HTTP get request to a path.
     '''
     if timeit:
         t1 = time.time()
-    ##fi
     
     # The header contains the TNG API key stored as an environment variable
     headers = {'api-key':os.environ['ILLUSTRIS_TNG_API_KEY']}
@@ -300,20 +299,16 @@ def get(path, params=None, timeout=10, directory='./', timeit=False):
             t2 = time.time()
             print('get() took '+str(round(t2-t1,1))+'s')
         return r.json()
-    ##fi
     
     # If a file is supplied save it
     if 'content-disposition' in r.headers:
         filename = r.headers['content-disposition'].split("filename=")[1]
         with open(directory+filename, 'wb') as f:
             f.write(r.content)
-        ##wi
         if timeit:
             t2 = time.time()
             print('get() took '+str(round(t2-t1,1))+'s')
-        ##fi
         return filename # return the filename string
-    ##fi
     
     return r
 
