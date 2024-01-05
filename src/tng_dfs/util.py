@@ -87,13 +87,15 @@ def parse_config_dict(cdict,keyword):
     '''parse_config_dict:
     
     Parse config dictionary for keyword-value pairs. Valid keywords are:
+        DATA_DIR (string) - Directory for project data
+        MW_ANALOG_DIR (string) - Directory for MW analog data
+        FIG_DIR_BASE (string) - Base directory for figures
+        FITTING_DIR_BASE (string) - Base directory for fitting results
         RO (float) - galpy distance scale
         VO (float) - galpy velocity scale
         ZO (float) - galpy vertical solar position
-        HOME_DIR (string) - base directory for project
-        DATA_DIR (string) - Directory for large data
-        MW_ANALOG_DIR (string) - Directory for MW analog data
         LITTLE_H (float) - Hubble constant in units of 100 km/s/Mpc
+        MW_MASS_RANGE (list) - Range of Milky Way stellar masses in 10**10 Msun
     
     Args:
         cdict (dict) - Dictionary of keyword-value pairs
@@ -117,7 +119,7 @@ def parse_config_dict(cdict,keyword):
     for key in _keyword:
         float_keys = ['RO','VO','ZO','LITTLE_H']
         int_keys = []
-        string_keys = ['HOME_DIR','DATA_DIR','MW_ANALOG_DIR','FIG_DIR_BASE',
+        string_keys = ['DATA_DIR','MW_ANALOG_DIR','FIG_DIR_BASE',
                        'FITTING_DIR_BASE']
         list_keys = ['MW_MASS_RANGE']
         # Floats
