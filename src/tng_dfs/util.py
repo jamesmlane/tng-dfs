@@ -21,6 +21,7 @@ import time
 import copy
 import dill as pickle
 import astropy.units as apu
+from galpy import orbit
 import pdb
 
 __snap_zs__ = None
@@ -767,3 +768,25 @@ def moving_average(data, window_size):
             window_sum -= data[i - window_size + 1]
 
     return moving_averages
+
+def join_orbs(orbs):
+    '''join_orbs:
+    
+    Join a list of orbit.Orbit objects together. They must share ro,vo and 
+    should otherwise have been initialized in a similar manner.
+    
+    Args:
+        orbs (orbit.Orbit) - list of individual orbit.Orbit objects
+    
+    Returns:
+        orbs_joined (orbit.Orbit) - Joined orbit.Orbit object
+    '''
+    for i,o in enumerate(orbs):
+        if i == 0:
+            ro = o._ro
+            vo = o._vo
+            vxvvs = o._call_internal()
+        else:
+            assert ro==o._ro and vo==o._vo, 'ro and/or vo do not match'
+            vxvvs = np.append(vxvvs, o._call_internal(), axis=1)
+    return orbit.Orbit(vxvvs.T,ro=ro,vo=vo)
