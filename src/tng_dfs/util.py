@@ -529,13 +529,9 @@ def subhalo_list_to_recarray(subs):
             if key not in keys:
                 if key in subdict_keys or isinstance(sub[key],dict):
                     continue # We'll do these afterwards
-                ##fi
                 keys.append(key)
                 if i>0: print('Warning: new key not in the first dict, '+\
                               str(key))
-            ##fi
-        ###i
-    ###i
 
     for i,sub in enumerate(subs):
         for j,key in enumerate(sub.keys()):
@@ -549,9 +545,6 @@ def subhalo_list_to_recarray(subs):
                 keys.append(subkey)
                 if i>0: print('Warning: new key not in the first dict, '+\
                               str(subkey))
-            ##kk
-        ###k
-    ###i
 
     # dtype should be int
     is_int = ['snap','id','len','len_gas','len_dm','len_stars','len_bhs',
@@ -567,8 +560,6 @@ def subhalo_list_to_recarray(subs):
             dt.append( (key,object) )
         else:
             dt.append( (key,float) )
-        ##ie
-    ###k
 
     subs_rec = np.recarray((len(subs),),dtype=dt)
 
@@ -584,20 +575,13 @@ def subhalo_list_to_recarray(subs):
                     except KeyError: 
                         subdict = None
                         break
-                    ##te
-                ##kk
                 subs_rec[key][i] = subdict
             else:
                 try:
                     subs_rec[key][i] = sub[key]
                 except KeyError:
                     subs_rec[key][i] = None
-                ##te
-            ##ie
-        ###j
-    ###i
     return subs_rec
-#def
 
 def ptype_to_indx(ptype):
         '''ptype_to_ind: Query the standard relationship between named 
