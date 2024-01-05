@@ -6,9 +6,10 @@ import sys, os
 import h5py, dill as pickle
 import pdb, copy, glob, time, subprocess, warnings, multiprocessing, logging
 
-## Matplotlib
+## Plotting
 import matplotlib as mpl
 from matplotlib import pyplot as plt
+import corner
 
 ## Astropy
 from astropy import units as apu
@@ -16,10 +17,10 @@ from astropy import constants as apc
 from astropy.coordinates import SkyCoord
 
 ## Analysis
+import scipy.optimize
 import scipy.stats
 import scipy.interpolate
 import emcee
-import corner
 
 ## galpy
 from galpy import orbit
