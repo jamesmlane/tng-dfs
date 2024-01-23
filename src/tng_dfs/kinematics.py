@@ -404,7 +404,11 @@ def get_radius_binning(orbs, n=1000, rmin=0., rmax=np.inf,
             large.
         delta_r (float): Small number to add to the bin edges to make sure that
             the bin edges are not exactly on top of a sample.
-        
+    
+    Returns:
+        bin_edges (np.ndarray): Array of bin edges
+        bin_cents (np.ndarray): Array of bin centers
+        n_samples (np.ndarray): Array of number of samples in each bin
     '''
     ## Handle keyword collisions
     # specifically focus on end_mode? Maybe test
