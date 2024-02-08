@@ -308,10 +308,6 @@ def prepare_mwsubs(mw_analog_dir,h=_HUBBLE_PARAM,mw_mass_range=[5,7],
     else:
         bulge_disk_fraction_mask = None
 
-    print('Took '+str(round(t2-t1,1))+' for code block 1')
-    print('Took '+str(round(t3-t2,1))+' for code block 2')
-    print('Took '+str(round(t4-t3,1))+' for code block 3')
-
     if return_vars:
         vars = {'base_url':base_url,'sim_names':sim_names,
                 'tng50_indices':tng50_indices,'tng50_urls':tng50_urls,
