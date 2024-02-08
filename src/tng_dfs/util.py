@@ -195,7 +195,16 @@ def prepare_mwsubs(mw_analog_dir,h=_HUBBLE_PARAM,mw_mass_range=[5,7],
     # Base URL
     baseURL = 'http://www.tng-project.org/api/'
     # Get list of simulations
-    r = get(baseURL)
+    base_url_path = os.path.join(mw_analog_dir,'subs','api','base_url.pkl')
+    if force_mwsubs or os.path.exists(base_url_path) == False:
+        print('Downloading base_url')
+        r = get(base_url)
+        with open(base_url_path,'wb') as f:
+            pickle.dump(r,f)
+    else:
+        print('Loading base_url from '+base_url_path)
+        with open(base_url_path,'rb') as f:
+            r = pickle.load(f)
     sim_names = [sim['name'] for sim in r['simulations']]
     tng50_indices = [sim_names.index('TNG50-'+str(i+1)) for i in range(4)]
     # Choose the lowest resolution tng50 run
@@ -203,10 +212,37 @@ def prepare_mwsubs(mw_analog_dir,h=_HUBBLE_PARAM,mw_mass_range=[5,7],
     tng50_url = tng50_urls[0]
 
     # Get the simulation, snapshots, snapshot redshifts
-    sim = get( tng50_url )
-    snaps = get( sim['snapshots'] )
+    sim_path = os.path.join(mw_analog_dir,'subs','api','sim.pkl')
+    if force_mwsubs or os.path.exists(sim_path) == False:
+        print('Downloading simulation info')
+        sim = get( tng50_url )
+        with open(sim_path,'wb') as f:
+            pickle.dump(sim,f)
+    else:
+        print('Loading simulation info from '+sim_path)
+        with open(sim_path,'rb') as f:
+            sim = pickle.load(f)
+    snaps_path = os.path.join(mw_analog_dir,'subs','api','snaps.pkl')
+    if force_mwsubs or os.path.exists(snaps_path) == False:
+        print('Downloading snapshot info')
+        snaps = get( sim['snapshots'] )
+        with open(snaps_path,'wb') as f:
+            pickle.dump(snaps,f)
+    else:
+        print('Loading snapshot info from '+snaps_path)
+        with open(snaps_path,'rb') as f:
+            snaps = pickle.load(f)
     snap_zs = [snap['redshift'] for snap in snaps]
-    snap0 = get( snaps[-1]['url'] )
+    snap0_path = os.path.join(mw_analog_dir,'subs','api','snap0.pkl')
+    if force_mwsubs or os.path.exists(snap0_path) == False:
+        print('Downloading snapshot 0 info')
+        snap0 = get( snaps[-1]['url'] )
+        with open(snap0_path,'wb') as f:
+            pickle.dump(snap0,f)
+    else:
+        print('Loading snapshot 0 info from '+snap0_path)
+        with open(snap0_path,'rb') as f:
+            snap0 = pickle.load(f)
 
     # Query the API for subhalos with stellar mass in a range near that of the 
     # Milky Way
@@ -218,12 +254,22 @@ def prepare_mwsubs(mw_analog_dir,h=_HUBBLE_PARAM,mw_mass_range=[5,7],
     mw_search_query = '?mass_stars__gt='+str(mw_mass_range_code[0])+\
                         '&mass_stars__lt='+str(mw_mass_range_code[1])+\
                         '&primary_flag__gt=0'
-    mw_search_results = get( snap0['subhalos']+mw_search_query )['results']
+    mw_search_query_path = os.path.join(mw_analog_dir,'subs','api',
+        mw_search_query+'.pkl')
+    if force_mwsubs or os.path.exists(mw_search_query_path) == False:
+        print('Downloading Milky Way like galaxies')
+        mw_search_results = get( snap0['subhalos']+mw_search_query )['results']
+        with open(mw_search_query_path,'wb') as f:
+            pickle.dump(mw_search_results,f)
+    else:
+        print('Loading Milky Way like galaxies from '+mw_search_query_path)
+        with open(mw_search_query_path,'rb') as f:
+            mw_search_results = pickle.load(f)
     print(str(len(mw_search_results))+' Milky way like galaxies found')
     n_mw = len(mw_search_results)
 
     # Get subhalo data
-    mwsubs_path = mw_analog_dir+'subs/mwsubs.pkl'
+    mwsubs_path = os.path.join(mw_analog_dir,'subs','mwsubs.pkl')
     if force_mwsubs or os.path.exists(mwsubs_path) == False:
         print('Downloading subhalo data')
         mwsubs = []
@@ -262,8 +308,12 @@ def prepare_mwsubs(mw_analog_dir,h=_HUBBLE_PARAM,mw_mass_range=[5,7],
     else:
         bulge_disk_fraction_mask = None
 
+    print('Took '+str(round(t2-t1,1))+' for code block 1')
+    print('Took '+str(round(t3-t2,1))+' for code block 2')
+    print('Took '+str(round(t4-t3,1))+' for code block 3')
+
     if return_vars:
-        vars = {'baseURL':baseURL,'sim_names':sim_names,
+        vars = {'base_url':base_url,'sim_names':sim_names,
                 'tng50_indices':tng50_indices,'tng50_urls':tng50_urls,
                 'tng50_url':tng50_url,'sim':sim,'snaps':snaps,'snap_zs':snap_zs,
                 'snap0':snap0,'mw_mass_range':mw_mass_range,
