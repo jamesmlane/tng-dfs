@@ -883,8 +883,7 @@ class TreePrimary(TreeInfo):
         # Initialize this class
         self.tree_major_mergers = tree_major_mergers
         self.n_major_mergers = len(tree_major_mergers)
-        # self.mlpid = kwargs.get('mlpid',None)
-        self.primary_mlpid = self.mlpid
+        self.primary_mlpid = kwargs.get('primary_mlpid',None)
         self.primary_star_mass = kwargs.get('primary_star_mass',None)
         self.primary_dm_mass = kwargs.get('primary_dm_mass',None)
         self.primary_mass_snapnum = kwargs.get('primary_mass_snapnum',None)
