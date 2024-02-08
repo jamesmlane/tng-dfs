@@ -193,7 +193,7 @@ def prepare_mwsubs(mw_analog_dir,h=_HUBBLE_PARAM,mw_mass_range=[5,7],
         vars (dict) - Dictionary of most variables used in this function
     '''
     # Base URL
-    baseURL = 'http://www.tng-project.org/api/'
+    base_url = 'http://www.tng-project.org/api/'
     # Get list of simulations
     base_url_path = os.path.join(mw_analog_dir,'subs','api','base_url.pkl')
     if force_mwsubs or os.path.exists(base_url_path) == False:
@@ -676,8 +676,8 @@ def get_softening_length(ptype, z=0, sim_name='TNG50-1', physical=True):
     Args:
         ptype
     '''
-    baseURL = 'http://www.tng-project.org/api/'
-    sim = get( baseURL+sim_name )
+    base_url = 'http://www.tng-project.org/api/'
+    sim = get( base_url+sim_name )
     ptype_str = ptype_to_str(ptype)
     a = 1./(z+1)
     if ptype_str == 'PartType0': # DM
