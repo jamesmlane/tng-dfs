@@ -531,6 +531,25 @@ def get_radius_binning(orbs, n=1000, rmin=0., rmax=np.inf,
 
     return bin_edges, bin_cents, n_samples
 
+def get_default_radius_binning_kwargs():
+    '''get_default_radius_binning_kwargs:
+
+    Get the default keyword arguments for get_radius_binning function.
+
+    Returns:
+        kwargs (dict) - Default keyword arguments
+    '''
+    # n, rmin, rmax should all be set by the user
+    kwargs = {
+        'n':None,
+        'rmin':None,
+        'rmax':None,
+        'bin_mode':'exact numbers',
+        'bin_equal_n':True,
+        'end_mode':'ignore',
+        'bin_cents_mode':'median',
+    }
+    return kwargs
 
 def calculate_Krot(orbs,masses,return_kappa=False):
     '''calculate_Krot:
