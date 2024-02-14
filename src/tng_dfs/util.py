@@ -676,7 +676,7 @@ def get_softening_length(ptype, z=0, sim_name='TNG50-1', physical=True):
     sim = get( base_url+sim_name )
     ptype_str = ptype_to_str(ptype)
     a = 1./(z+1)
-    if ptype_str == 'PartType0': # DM
+    if ptype_str == 'PartType1': # DM
         softening_length_comoving = sim['softening_dm_comoving']
         softening_length_code = softening_length_comoving*a
         softening_max_code = sim['softening_dm_max_phys']
