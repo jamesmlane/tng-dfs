@@ -22,13 +22,13 @@ These packages are required but could be worked around with minor modifications 
 
 ### The config file
 
-The config file contains some high-level parameters used throughout the repo, stored in this file for consistency. The most important keywords are for pathing. The supported keywords are:
+The config file contains some high-level parameters used throughout the project, stored in this file for consistency. The most important keywords are for pathing. The supported keywords are:
 
 - `DATA_DIR`: The directory where the data is stored. This is a large directory, requiring about 1TB of space. All of the data and most of the figures are stored here. The majority of the storage space is taken up by the N-body snapshots, which are not included in this repository.
-- `MW_ANALOG_DIR`: The directory where the MW-analog data is stored. This constitutes the principal analysis of the paper. It should be located within `DATA_DIR`. We recommend $DATA_DIR/mw_analogs/ as the path, or somthing like that.
-- `FIG_DIR_BASE`: Base directory for the figure storage. Could be located at the same directory level as `DATA_DIR`.
-- `FITTING_DIR_BASE`: Base directory for the fitting results. Could be located at the same directory level as `DATA_DIR`.
-- `RO`/`VO`/`ZO`: Scales used for galpy. See galpy documentation for more information. We used `RO=8.275` (Gravity Collab.+ 2021), `VO=220`, and `ZO=0.0208` (Bennett+2018). Since the analysis doesn't deal with real data, these values are not critical. They just allow galpy to be used with physical units.
+- `MW_ANALOG_DIR`: The directory where the MW-analog data is stored. This constitutes the principal analysis of the paper. It should probably be located within `DATA_DIR` (In fact `DATA_DIR` and `MW_ANALOG_DIR` could probably be the same directory if the code were re-written, but as it stands they are different, but confusingly very similar directories that are accessed by different keywords). We recommend $DATA_DIR/mw_analogs/ as the path.
+- `FIG_DIR_BASE`: Base directory for the figure storage. Could be located at the same directory level as `DATA_DIR`, but is independent for flexibility. Probably requires about 5 GB of space.
+- `FITTING_DIR_BASE`: Base directory for the fitting results. Could be located at the same directory level as `DATA_DIR`, but is independent for flexibility. Probably requires about 30 GB of space.
+- `RO`/`VO`/`ZO`: Scales used for galpy. See galpy documentation for more information. Where necessary we use `RO=8.275` (Gravity Collab.+ 2021), `VO=220`, and `ZO=0.0208` (Bennett+2018). Since the analysis doesn't deal with real data, these values are not critical. They just allow galpy to be used with physical units.
 - `LITTLE_H`: The Hubble constant. We used `0.6774` (Planck Collab. 2015, note this is the value used in the IllustrisTNG simulations).
 - `MW_MASS_RANGE`: The stellar mass range for Milky Way analogs in units of 10^10 solar masses. We use [5,7].
 
@@ -36,17 +36,23 @@ There are many other 'keywords' used throughout the analysis. These are not stor
 
 ### Pathing
 
-Locally, the notebooks should only save/store about 500 MB of data within the structure of the repository. Most of the data (About 1TB) are stored in DATA_DIR. Notes on pathing as as-per above.
+Locally, the notebooks should only save/store about 500 MB of data within the structure of the repository, and the user shouldn't need to create any directories, but if they do it should be fairly obvious in the code (i.e. need to create a ./fig/ directory for a notebook to save to or something simple). Most of the data (About 1TB) are stored in `DATA_DIR`. I use the following structure for the data-heavy directories keyworded above:
+
+- SOME_DIRECTORY_WITH_LOTS_OF_SPACE
+    - $DATA_DIR
+        - $MW_ANALOG_DIR
+    - $FIG_DIR_BASE
+    - $FITTING_DIR_BASE
 
 ### Running the code
 
 The notebooks are organized in the order they should be run. Running the notebooks in this order should produce the same results as in the paper. Errors should by minimal and hopefully restricted to minor pathing inconsistencies or post-run edits to the notebooks. All should be within the scope of the user to fix with minor edits.
 
-The notebooks are organized as follows (headers are files within `./notebooks`):
+The notebooks are organized as follows (headers are directories within `./notebooks`):
 
 #### 0_preparation
 
-- `1-prepare_project_paths.ipynb`: This notebook just prepares some paths for the rest of the projects. Since not all code creates the directories it will use/save data to, it's worthwhile to run this notebook to setup some paths within `DATA_DIR` and `MW_ANALOGS_DIR`
+- `1-prepare_project_paths.ipynb`: This notebook just prepares some paths for the rest of the projects. Since not all code creates the directories it will use/save data to, it's worthwhile to run this notebook to setup some paths within `DATA_DIR` and `MW_ANALOG_DIR`
 
 #### 1_analog_sample
 
@@ -88,3 +94,8 @@ The notebooks are organized as follows (headers are files within `./notebooks`):
 `3_merger_stats.ipynb`: Make plots of the merger stats for the paper. Currently only 1 figure.
 `4_df_stats.ipynb`: Make plots of the DF stats for the paper. Currently only 1 figure.
 
+Many of the paper figures are made in `./notebooktes/5_compare_distribution_functions/`.
+
+### src directory
+
+The `src` directory contains code used across multiple notebooks. Each notebook accesses the `src` directory by adding it to `sys.path`. See any notebook for an example of how this is done. The python code in `src/tng_dfs/` is organized like a standard python project and is imported throughout the project. The modules are fairly self-explanatory, and have docstrings explaining how they work. `src/mpl` contains a `.mplstyle` file for nice looking plots. This is loaded in each notebook but can easily be replaced/removed. `src/nb_modules` contains text files that are loaded in each notebook using the `%load ../../src/nb_modules/...` magic. This just helps to standardize the code across notebooks. It's probably not necessary to re-run the magic for each notebook, but it can be done for consistency.
