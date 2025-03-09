@@ -15,6 +15,7 @@ __author__ = "James Lane"
 ### Imports
 import numpy as np
 import dill as pickle
+from galpy import potential
 import os
 # import pdb
 
@@ -167,3 +168,40 @@ def median_params_from_emcee_sampler(filename, ncut=0, nthin=1,
         return params, samples
     else:
         return params
+
+# ----------------------------------------------------------------------------
+
+# Reconstructing pickled objects
+
+def reconstruct_interpolated_spherical_potential(interpot, validate=False):
+    '''reconstruct_interpolated_spherical_potential:
+
+    It appears that unpickled interpolated potentials crash the kernel when 
+    trying to integrate orbits, and possibly other actions.
+
+    Args:
+        interpot (galpy.potential.interpSphericalPotential) - Target 
+            interpolated potential that needs reconstruction.
+        validate (boolean) - Run some quick tests to ensure that the new 
+            interpolated potential is identical to the input.
+    
+    Returns:
+        interpot_out (galpy.potential.interpSphericalPotential) - Output
+            potential that should be usable for orbit integration.
+    '''
+    interpot_new = potential.interpSphericalPotential(
+        interpot._rforce,
+        interpot._rgrid,
+        Phi0=interpot._Phi0,
+        ro=interpot._ro,
+        vo=interpot._vo
+    )
+
+    if validate:
+        assert interpot._ro == interpot_new._ro
+        assert interpot._vo == interpot_new._vo
+        assert np.isclose(interpot._Phi0, interpot_new._Phi0)
+        assert np.allclose(interpot._rgrid, interpot_new._rgrid)
+        assert np.allclose(interpot._rforce_grid, interpot_new._rforce_grid)
+
+    return interpot_new
