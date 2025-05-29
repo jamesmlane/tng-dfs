@@ -1,0 +1,14 @@
+# Pathing
+DATA_DIR = my_storage_dir/data/
+MW_ANALOG_DIR = my_storage_dir/data/mw_analogs/
+FIG_DIR_BASE = my_storage_dir/figs/
+FITTING_DIR_BASE = my_storage_dir/fitting/
+
+# Scales
+RO = 8.275 # Gravity+2021
+VO = 220
+ZO = 0.0208
+LITTLE_H = 0.6774 # Planck 2015
+
+# Analysis keywords
+MW_MASS_RANGE = [5,7] # in units of 10^10 solar masses
