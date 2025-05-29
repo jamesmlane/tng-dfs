@@ -1,6 +1,6 @@
 # TNG Distribution Functions
 
-This repository contains the code used for the paper [Lane & Bovy 2024](https://arxiv.org/abs/XXXX.XXXXX).
+This repository contains the code used for the paper [Lane & Bovy 2025](https://arxiv.org/abs/2405.10945).
 
 ## Requirements
 
@@ -10,7 +10,7 @@ These packages must be installed to run the code in this repository:
 - matplotlib
 - h5py
 - astropy
-- galpy (should be > v1.9 since distribution function code is being actively developed)
+- galpy (must be > v1.9 to perform distribution function calculations)
 
 These packages are required but could be worked around with minor modifications to the code:
 - dill (could be replaced with pickle, but we encountered challenges with pickling DF objects and so don't recommend omitting dill)
@@ -36,7 +36,7 @@ There are many other 'keywords' used throughout the analysis. These are not stor
 
 ### Pathing
 
-Locally, the notebooks should only save/store about 500 MB of data within the structure of the repository, and the user shouldn't need to create any directories, but if they do it should be fairly obvious in the code (i.e. need to create a ./fig/ directory for a notebook to save to or something simple). Most of the data (About 1TB) are stored in `DATA_DIR`. I use the following structure for the data-heavy directories keyworded above:
+Locally, the notebooks should only save/store about 500 MB of data within the structure of the repository, and the user shouldn't need to create any directories, but if they do it should be fairly obvious in the code (i.e. need to create a ./fig/ directory for a notebook to save a figure). Most of the data (About 1TB) are stored in `DATA_DIR`. We recommend the following structure for the data-heavy directories keyworded above:
 
 - SOME_DIRECTORY_WITH_LOTS_OF_SPACE
     - $DATA_DIR
